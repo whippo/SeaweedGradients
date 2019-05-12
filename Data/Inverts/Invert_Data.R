@@ -90,7 +90,7 @@ taxon_names <- unique(taxon_names)
 w <-wm_name2id_(taxon_names)
 # print unrecognized returns
 w1 <- melt(w)
-# join nunrecognized species
+# join unrecognized species
 taxon_table <- melt(taxon_names)
 names(taxon_table)[names(taxon_table)=="value"] <- "L1"
 species_notfound <- setdiff(taxon_table$L1, w1$L1)
@@ -115,7 +115,10 @@ raw_inverts_2$genusSpecies <- raw_inverts_2$genusSpecies %>%
          "Metalaptamphopus pectinatus" = "Metaleptamphopus pectinatus",
          "Labidaster annulatus" = "Labidiaster annulatus",
          "Promachocrinus kerguelenensis" = "Promachocrinus kerguelensis",
-         "Phorbus aerolatus" = "Phorbas areolatus")
+         "Phorbus aerolatus" = "Phorbas areolatus",
+         "Metalaptamphopus pectatus" = "Metaleptamphopus pectinatus",
+         "Bovalia gigantea" = "Bovallia gigantea",
+         "Austrodoris vergulensis" = "Austrodoris kerguelenensis")
 
 
 
