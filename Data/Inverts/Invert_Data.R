@@ -130,6 +130,40 @@ species_list <-raw_inverts_2 %>%
 
 write_csv(species_list, "B236_invert-species-list.csv")
 
+####################### species found at all sites
+
+Site1 <- raw_inverts_2 %>%
+  group_by(SiteID, genusSpecies) %>%
+  filter(SiteID == 1)
+Site2 <- raw_inverts_2 %>%
+  group_by(SiteID, genusSpecies) %>%
+  filter(SiteID == 2)
+Site3 <- raw_inverts_2 %>%
+  group_by(SiteID, genusSpecies) %>%
+  filter(SiteID == 3)
+Site4 <- raw_inverts_2 %>%
+  group_by(SiteID, genusSpecies) %>%
+  filter(SiteID == 4)
+Site5 <- raw_inverts_2 %>%
+  group_by(SiteID, genusSpecies) %>%
+  filter(SiteID == 5)
+Site6 <- raw_inverts_2 %>%
+  group_by(SiteID, genusSpecies) %>%
+  filter(SiteID == 6)
+Site7 <- raw_inverts_2 %>%
+  group_by(SiteID, genusSpecies) %>%
+  filter(SiteID == 7)
+Site8 <- raw_inverts_2 %>%
+  group_by(SiteID, genusSpecies) %>%
+  filter(SiteID == 8)
+Site9 <- raw_inverts_2 %>%
+  group_by(SiteID, genusSpecies) %>%
+  filter(SiteID == 9)
+
+Reduce(intersect, list(Site1$genusSpecies, Site2$genusSpecies, Site3$genusSpecies,
+                       Site4$genusSpecies, Site5$genusSpecies, Site6$genusSpecies,
+                       Site7$genusSpecies, Site8$genusSpecies))
+
 
 ###################################################################################
 # COLLECTION VISUALIZATIONS                                                       #
@@ -162,9 +196,13 @@ ggplot(data = raw_inverts_f3, aes(x = IceCoverCat, y = totalSpecies)) +
   geom_col() +
   theme_classic()
 
-?viridis
+
+
+
+
+
 ############### SUBSECTION HERE
-str(raw_inverts_2)
+
 
 #####
 #<<<<<<<<<<<<<<<<<<<<<<<<<<END OF SCRIPT>>>>>>>>>>>>>>>>>>>>>>>>#
