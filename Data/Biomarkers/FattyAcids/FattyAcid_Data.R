@@ -112,6 +112,7 @@ raw_inverts_2$genusSpecies <- raw_inverts_2$genusSpecies %>%
          "Sterechinus neumeyeri" = "Sterechinus neumayeri",
          "Isotaelia antarctica" = "Isotealia antarctica",
          "Isotealia antactica" = "Isotealia antarctica",
+         "Isotelia autare" = "Isotealia antarctica",
          "Heterocucumis cucumaris" = "Heterocucumis steineni",
          "Porania antarctica glabra" = "Glabraster antarctica",
          "Alcyonium antarctucum" = "Alcyonium antarcticum",
@@ -125,7 +126,10 @@ raw_inverts_2$genusSpecies <- raw_inverts_2$genusSpecies %>%
          "Austrodoris kerguelenensis" = "Doris kerguelenensis",
          "Pontogeneilla brevicornis" = "Prostebbingia brevicornis",
          "Panaceradocus miersi" = "Paraceradocus miersi",
-         "Polynoidae so" = "Polynoidae sp."
+         "Polynoidae so" = "Polynoidae sp.",
+         "Desmerestia menziesii" = "Desmarestia menziesii",
+         "Paraphimedia integricauda" = "Pariphimedia integricauda",
+         "Oraderea bidentata" = "Oradarea bidentata"
          )
 
 
