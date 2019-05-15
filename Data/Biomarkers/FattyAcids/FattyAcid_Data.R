@@ -76,6 +76,9 @@ raw_inverts_1$IceCoverCat <- raw_inverts_1$IceCoverCat %>%
          "<=40%" = "0.4")
 raw_inverts_1$IceCoverCat <- as.numeric(as.character(raw_inverts_1$IceCoverCat))
 
+# fix ice cover cat mistake in site 9
+raw_inverts_1[679:680, 6] <- 0.6
+
 ###################################################################################
 # SPECIES NAMES & LIST                                                            #
 ###################################################################################
@@ -180,6 +183,30 @@ Reduce(intersect, list(Site1$genusSpecies, Site2$genusSpecies, Site3$genusSpecie
                        Site7$genusSpecies, Site8$genusSpecies, Site9$genusSpecies,
                        Site10$genusSpecies))
 
+####################### extract algal species
+
+specieslist1 <- species_list[1:50,1]
+specieslist2 <- species_list[51:69,1]
+
+alltaxa <- wm_records_taxamatch(specieslist1$genusSpecies)
+alltaxa2 <- wm_records_taxamatch(specieslist2$genusSpecies)
+
+taxatable <- alltaxa %>% 
+  map_df(tibble::rownames_to_column, .id = 'kingdom')
+taxatable <- taxatable[,2:29]
+
+taxatable2 <- alltaxa2 %>%
+  map_df(tibble::rownames_to_column, .id = 'kingdom')
+taxatable2 <- taxatable2[,2:29]
+
+finaltaxatable <- bind_rows(taxatable, taxatable2)
+
+algaetable <- finaltaxatable %>%
+  filter(kingdom != 'Animalia')
+
+write.csv(algaetable[,4], "algaetable.csv")
+
+
 
 ###################################################################################
 # COLLECTION VISUALIZATIONS                                                       #
@@ -224,8 +251,24 @@ ggplot(data = raw_inverts_f3, aes(x = SiteID, y = totalSpecies)) +
   geom_col() +
   theme_classic()
 
+raw_inverts_f4 <- raw_inverts_f1 %>%
+  group_by(SiteID, genusSpecies) %>%
+  summarize(sum(count))
+# rename column
+names(raw_inverts_f4)[names(raw_inverts_f4)=="sum(count)"] <- "totalSpecies"
 
+# rough plot of species by site
+ggplot(data = raw_inverts_f3, aes(x = SiteID, y = genusSpecies)) +
+  geom_count() 
 
+# heatmap
+ggplot(data = raw_inverts_f4, aes(x = SiteID, y = genusSpecies)) +
+  geom_tile(aes(fill = totalSpecies)) +
+  scale_fill_viridis(option = "B", begin = 0.3, end = 1) +
+  theme_dark() +
+  theme(panel.background = element_rect(fill = 'black')) 
+  
+str(raw_inverts_f4)
 
 
 
