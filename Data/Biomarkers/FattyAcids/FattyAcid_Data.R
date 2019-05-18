@@ -29,7 +29,8 @@
 # RECENT CHANGES TO SCRIPT                                                        #
 # LOAD PACKAGES                                                                   #
 # READ IN AND PREPARE DATA                                                        #
-# SPECIES NAMES & LIST                                                            #   
+# SPECIES NAMES & LIST                                                            # 
+# COLLECTION VISUALIZATIONS                                                       #
 #                                                                                 #
 ###################################################################################
 
@@ -93,7 +94,9 @@ raw_biotaxa_1 <- raw_biotaxa_1 %>%
 
 # check names against WoRMS database (exact match only)
 taxon_names <- raw_biotaxa_1$genusSpecies
+
 # start from here for recheck #
+
 taxon_names <- unique(taxon_names)
 # can only check 50 at a time
 taxacheck1 <- wm_records_names(taxon_names[1:50])
@@ -133,36 +136,36 @@ possibletaxa <- possibletaxa[,2:29]
 # fix incorrect species names
 raw_biotaxa_2 <- raw_biotaxa_1
 raw_biotaxa_2$genusSpecies <- raw_biotaxa_2$genusSpecies %>%
-  recode("Neosmilaster georginus" = "Neosmilaster georgianus", 
-         "Sterechinus neumeyeri" = "Sterechinus neumayeri",
-         "Isotaelia antarctica" = "Isotealia antarctica",
-         "Isotealia antactica" = "Isotealia antarctica",
-         "Isotelia autare" = "Isotealia antarctica",
-         "Heterocucumis cucumaris" = "Heterocucumis steineni",
-         "Porania antarctica glabra" = "Glabraster antarctica",
-         "Porania antarctica" = "Glabraster antarctica",
-         "Alcyonium antarctucum" = "Alcyonium antarcticum",
-         "Metalaptamphopus pectinatus" = "Metaleptamphopus pectinatus",
-         "Labidaster annulatus" = "Labidiaster annulatus",
+  recode("Neosmilaster georginus" =        "Neosmilaster georgianus", 
+         "Sterechinus neumeyeri" =         "Sterechinus neumayeri",
+         "Isotaelia antarctica" =          "Isotealia antarctica",
+         "Isotealia antactica" =           "Isotealia antarctica",
+         "Isotelia autare" =               "Isotealia antarctica",
+         "Heterocucumis cucumaris" =       "Heterocucumis steineni",
+         "Porania antarctica glabra" =     "Glabraster antarctica",
+         "Porania antarctica" =            "Glabraster antarctica",
+         "Alcyonium antarctucum" =         "Alcyonium antarcticum",
+         "Metalaptamphopus pectinatus" =   "Metaleptamphopus pectinatus",
+         "Labidaster annulatus" =          "Labidiaster annulatus",
          "Promachocrinus kerguelenensis" = "Promachocrinus kerguelensis",
-         "Phorbus aerolatus" = "Phorbas bergmontae",
-         "Metalaptamphopus pectatus" = "Metaleptamphopus pectinatus",
-         "Bovalia gigantea" = "Bovallia gigantea",
-         "Austrodoris vergulensis" = "Doris kerguelenensis",
-         "Austrodoris kerguelenensis" = "Doris kerguelenensis",
-         "Pontogeneilla brevicornis" = "Prostebbingia brevicornis",
-         "Panaceradocus miersi" = "Paraceradocus miersi",
-         "Polynoidae so" = "Polynoidae sp.",
-         "Desmerestia menziesii" = "Desmarestia menziesii",
-         "Paraphimedia integricauda" = "Pariphimedia integricauda",
-         "Oraderea bidentata" = "Oradarea bidentata",
-         "Myriogramme mangini" = "Myriogramme manginii",
-         "Waldeckia obesa" = "Charcotia obesa"
+         "Phorbus aerolatus" =             "Phorbas bergmontae",
+         "Metalaptamphopus pectatus" =     "Metaleptamphopus pectinatus",
+         "Bovalia gigantea" =              "Bovallia gigantea",
+         "Austrodoris vergulensis" =       "Doris kerguelenensis",
+         "Austrodoris kerguelenensis" =    "Doris kerguelenensis",
+         "Pontogeneilla brevicornis" =     "Prostebbingia brevicornis",
+         "Panaceradocus miersi" =          "Paraceradocus miersi",
+         "Polynoidae so" =                 "Polynoidae sp.",
+         "Desmerestia menziesii" =         "Desmarestia menziesii",
+         "Paraphimedia integricauda" =     "Pariphimedia integricauda",
+         "Oraderea bidentata" =            "Oradarea bidentata",
+         "Myriogramme mangini" =           "Myriogramme manginii",
+         "Waldeckia obesa" =               "Charcotia obesa"
   )
 
 # recheck all names
 taxon_names <- unique(raw_biotaxa_2$genusSpecies)
-
+# go back to recheck
 
 ####################### make species list
 
