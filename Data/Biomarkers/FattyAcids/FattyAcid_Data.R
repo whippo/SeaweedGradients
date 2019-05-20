@@ -360,10 +360,19 @@ ggplot(data = raw_biotaxa_f3, aes(x = SiteID, y = genusSpecies)) +
 # heatmap
 ggplot(data = raw_biotaxa_f4, aes(x = SiteID, y = genusSpecies)) +
   geom_tile(aes(fill = totalSpecies)) +
+  scale_fill_viridis(option = "B", begin = 0.3, end = 1) +
+  theme_dark() +
+  theme(panel.background = element_rect(fill = 'black')) +
+  geom_text(show.legend = FALSE, colour = "white", aes(label = totalSpecies)) 
+
+# heatmap by phylum
+ggplot(data = raw_biotaxa_f4, aes(x = SiteID, y = genusSpecies)) +
+  geom_tile(aes(fill = totalSpecies)) +
   facet_grid(.~phylum) +
   scale_fill_viridis(option = "B", begin = 0.3, end = 1) +
   theme_dark() +
-  theme(panel.background = element_rect(fill = 'black')) 
+  theme(panel.background = element_rect(fill = 'black')) +
+  geom_text(show.legend = FALSE, colour = "white", aes(label = totalSpecies)) 
   
 str(raw_biotaxa_f4)
 
@@ -429,8 +438,8 @@ Reduce(intersect, list(Site1$genusSpecies, Site2$genusSpecies, Site3$genusSpecie
 # Total number of each species replicates per site
 species_replicates <- raw_biotaxa_f4
 
-reps <- 3
-sites <- 8
+reps <- 2
+sites <- 14
 
 
 reptable <- species_replicates %>%
@@ -444,7 +453,31 @@ sitestable <- sitestable %>%
 
 # core as defined by at least 3 reps, at at least 8 sites
 core_species <- unique(sitestable$genusSpecies)
-core_table <- melt(core_species)
+core_table <- melt(sort(core_species))
 
+core_3_6 <- core_table 
+core_3_8 <- core_table
+core_3_10 <- core_table
+core_3_14 <- core_table
+core_2_10 <- core_table
+core_2_14 <- core_table
+
+core_3_6$reps <- 3
+core_3_6$sites <- 6
+core_3_8$reps <- 3
+core_3_8$sites <- 8
+core_3_10$reps <- 3
+core_3_10$sites <- 10
+core_3_14$reps <- 3
+core_3_14$sites <- 14
+core_2_10$reps <- 2
+core_2_10$sites <- 10
+core_2_14$reps <- 2
+core_2_14$sites <- 14
+
+core_siterep <- bind_rows(core_3_6, core_3_8, core_3_10, core_3_14,
+                          core_2_10, core_2_14)
+
+write.csv(core_siterep, "core_species_siterep.csv")
 #####
 #<<<<<<<<<<<<<<<<<<<<<<<<<<END OF SCRIPT>>>>>>>>>>>>>>>>>>>>>>>>#
