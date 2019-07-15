@@ -347,7 +347,18 @@ raw_biotaxa_f4 <- raw_biotaxa_f4 %>%
                             genusSpecies == "Perknaster sp." ~ "Echinodermata",
                             genusSpecies == "Oraderea cf. bidentata" ~ "Arthropoda",
                             genusSpecies == "Liothyrella sp." ~ "Brachiopoda",
-                            genusSpecies == "Serolis sp." ~ "Arthropoda"
+                            genusSpecies == "Serolis sp." ~ "Arthropoda",
+                            genusSpecies == "Doris kerguelenensis" ~ "Mollusca",
+                            genusSpecies == "Heterocucumis steineni" ~ "Echinodermata",
+                            genusSpecies == "Rhodokrambe lanigioides" ~ "Rhodophyta",
+                            genusSpecies == "Pariphimedia integricauda" ~ "Arthropoda",
+                            genusSpecies == "Curdiea racovitzae" ~ "Rhodophyta",
+                            genusSpecies == "Psilaster charcoti" ~ "Echinodermata",
+                            genusSpecies == "Glabraster antarctica" ~ "Echinodermata",
+                            genusSpecies == "Oradarea bidentata" ~ "Arthropoda",
+                            genusSpecies == "Charcotia obesa" ~ "Arthropoda",
+                            genusSpecies == "Austropugetia crassa" ~ "Rhodophyta",
+                            genusSpecies == "Phorbas bergmontae" ~ "Porifera"
                             ))
 raw_biotaxa_f4 <- raw_biotaxa_f4 %>% 
   mutate(phylum = coalesce(phylum, phylum1)) 
@@ -356,6 +367,12 @@ raw_biotaxa_f4 <- raw_biotaxa_f4 %>%
 # rough plot of species by site
 ggplot(data = raw_biotaxa_f3, aes(x = SiteID, y = genusSpecies)) +
   geom_count() 
+
+# stacked bar graph of phyla collected
+ggplot(data = raw_biotaxa_f4, aes(SiteID)) +
+  geom_bar(aes(fill = phylum)) +
+  scale_fill_viridis(discrete = TRUE) +
+  theme_minimal()
 
 # heatmap
 ggplot(data = raw_biotaxa_f4, aes(x = SiteID, y = genusSpecies)) +
