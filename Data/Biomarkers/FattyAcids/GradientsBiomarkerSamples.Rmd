@@ -1,0 +1,94 @@
+---
+title: "Biomarker Sample Summary"
+author: "Ross Whippo"
+date: "10/17/2019"
+output: 
+  tufte::tufte_handout: default
+  tufte::tufte_html: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(viridis)
+library(tufte)
+library(kableExtra)
+```
+
+
+## Overview of samples collected
+
+```{r, echo = FALSE, message = FALSE}
+samples <- read_csv("B-236_Fatty-Acid_Collections_QAQC.csv")
+```
+
+\newthought{Over the course} of the expedition, a total of `r length(samples$ProjID)` unique samples were collected including members of `r length(unique(samples$phylum, na.rm = TRUE))` phyla, `r length(unique(samples$class, na.rm = TRUE))` classes, `r length(unique(samples$Genus, na.rm = TRUE))` genera, and `r length(unique(samples$genusSpecies, na.rm = TRUE))` species\footnote{Currently, organisms that are not identified to the species level result in the discrepancy between number of genera and species.}.
+
+$~$
+
+**Phyla**
+```{r, echo = FALSE}
+phyla <- unique(samples$phylum)
+phyla <- phyla %>%
+  na.omit()
+unique(phyla)
+```
+
+**Classes**
+```{r, echo = FALSE}
+class <- unique(samples$class)
+class <- class %>%
+  na.omit()
+unique(class)
+```
+
+```{r, echo = FALSE, message = FALSE}
+all_inverts <- samples %>%
+  filter(kingdom == "Animalia" | is.na(kingdom))
+all_algae <- samples %>%
+  filter(kingdom %in% c('Plantae', 'Chromista'))
+```
+A total of `r length(all_inverts$ProjID)` invertebrate and `r length(all_algae$ProjID)` algal samples were collected\footnote{These numbers are approximate due to issues identified above.}.
+
+$~$
+
+Number of specimens collected varied by specific site, latitude, and ice cover. 
+
+```{r, echo = FALSE, fig.margin = TRUE, warning = FALSE}
+samples$count <- 1
+ggplot(samples, aes(x = SiteID, y = count)) +
+         geom_col()
+```
+
+```{r, echo = FALSE, fig.margin = TRUE, warning = FALSE}
+samples$count <- 1
+ggplot(samples, aes(x = IceCoverCat, y = count)) +
+         geom_col()
+```
+
+```{r, echo = FALSE, fig.margin = TRUE, warning = FALSE}
+samples$count <- 1
+ggplot(samples, aes(x = IceCoverCat, y = count)) +
+         geom_col()
+```
+
+## Summary of invertebrates collected
+
+\newthought{Number of invertebrates} collected varied by specific site, latitude, and ice cover parameters. The greatest number of samples were collected at: sites 05, 07:12, and 14:15 (>100 samples); ice cover categories 0.4, 0.6, and 0.8 (>300 samples); and at latitudes to be determined. 
+
+Invertebrates present with at least two replicates at all sites include *Nacella concinna* and *Odontaster validus*. 
+
+```{r, echo = FALSE, fig.margin = TRUE, message = FALSE, warning = FALSE}
+sitereps <- read_csv('core_species_siterep.csv')
+kable(sitereps[2:4])
+```
+
+## Summary of algae collected
+
+
+
+You can also include things in the margin that are not numbered with the margin note command\marginnote{Like this.}.
+
+```
+this is inline code.
+```

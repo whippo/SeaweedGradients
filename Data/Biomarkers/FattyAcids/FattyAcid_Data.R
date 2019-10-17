@@ -4,7 +4,7 @@
 # Data are current as of 2019-05-19                                              ##
 # Data source: B-236 Seaweed Gradients Cruise                                    ##
 # R code prepared by Ross Whippo                                                 ##
-# Last updated 2019-05-19                                                        ##
+# Last updated 2019-10-17                                                        ##
 #                                                                                ##
 ###################################################################################
 
@@ -19,7 +19,7 @@
 # B-236_Fatty-Acid_Collections.csv
 
 # Associated Scripts:
-# none
+# GradientsBiomarkerSamples.Rmd
 
 # TO DO
 
@@ -43,6 +43,7 @@
 # https://github.com/whippo/SeaweedGradients.git
 # 2019-05-13 Changed name of source files
 # 2019-05-19 Added phylum extractions, worked on IDing common species
+# 2019-10-17 Created QAQC .csv export for full data set for markdown summary script
 
 ###################################################################################
 # LOAD PACKAGES                                                                   #
@@ -188,7 +189,67 @@ raw_biotaxa_2$genusSpecies <- raw_biotaxa_2$genusSpecies %>%
 
 # recheck all names
 taxon_names <- unique(raw_biotaxa_2$genusSpecies)
-# go back to recheck
+# go back to recheck, DO A COMPLETE RERUN
+
+####################### add complete phylogeny and save full corrected data
+
+checkedtaxatable_2 <- checkedtaxatable 
+names(checkedtaxatable_2)[names(checkedtaxatable_2)=="scientificname"] <- "genusSpecies"
+
+raw_biotaxa_3 <- raw_biotaxa_2 %>%
+  left_join(checkedtaxatable_2[c(4,14:18)], by = 'genusSpecies')
+
+raw_biotaxa_3$phylum1 <- raw_biotaxa_3$phylum
+
+# add unknown phyla manually
+raw_biotaxa_4 <- raw_biotaxa_3 %>%
+  mutate(phylum1 = case_when(genusSpecies == "Cnemidocarpa sp." ~ "Chordata",
+                             genusSpecies == "Polynoidae sp." ~ "Annelida",
+                             genusSpecies == "Nematoflustra sp." ~ "Bryozoa",
+                             genusSpecies == "Pycnogonid sp." ~ "Arthropoda",
+                             genusSpecies == "Terebellidae sp." ~ "Annelida",
+                             genusSpecies == "Munnid isopod" ~ "Arthropoda",
+                             genusSpecies == "Oraderea sp." ~ "Arthropoda",
+                             genusSpecies == "Flabelligera cf. mundata" ~ "Annelida",
+                             genusSpecies == "Flabelligera sp." ~ "Annelida",
+                             genusSpecies == "Holothuroidea sp." ~ "Echinodermata",
+                             genusSpecies == "Nymphon sp." ~ "Arthropoda",
+                             genusSpecies == "Heterocucumis sp." ~ "Echinodermata",
+                             genusSpecies == "Arctarid sp." ~ "Arthropoda",
+                             genusSpecies == "Hymenocladiopsis sp." ~ "Rhodophyta",
+                             genusSpecies == "Camptoplites sp." ~ "Bryozoa",
+                             genusSpecies == "Unknown amphipod 1 sp." ~ "Arthropoda",
+                             genusSpecies == "Acodontaster sp." ~ "Echinodermata",
+                             genusSpecies == "Benthic diatoms" ~ "Ochrophyta",
+                             genusSpecies == "Lysianassid sp." ~ "Arthropoda",
+                             genusSpecies == "Eusirus sp." ~ "Arthropoda",
+                             genusSpecies == "Octopus/Stubby Squid sp." ~ "Mollusca",
+                             genusSpecies == "Diatom benthic" ~ "Ochrophyta",
+                             genusSpecies == "Benthic Diatoms sp." ~ "Ochrophyta",
+                             genusSpecies == "Diatoms sp." ~ "Ochrophyta",
+                             genusSpecies == "Perknaster sp." ~ "Echinodermata",
+                             genusSpecies == "Oraderea cf. bidentata" ~ "Arthropoda",
+                             genusSpecies == "Liothyrella sp." ~ "Brachiopoda",
+                             genusSpecies == "Serolis sp." ~ "Arthropoda",
+                             genusSpecies == "Doris kerguelenensis" ~ "Mollusca",
+                             genusSpecies == "Heterocucumis steineni" ~ "Echinodermata",
+                             genusSpecies == "Rhodokrambe lanigioides" ~ "Rhodophyta",
+                             genusSpecies == "Pariphimedia integricauda" ~ "Arthropoda",
+                             genusSpecies == "Curdiea racovitzae" ~ "Rhodophyta",
+                             genusSpecies == "Psilaster charcoti" ~ "Echinodermata",
+                             genusSpecies == "Glabraster antarctica" ~ "Echinodermata",
+                             genusSpecies == "Oradarea bidentata" ~ "Arthropoda",
+                             genusSpecies == "Charcotia obesa" ~ "Arthropoda",
+                             genusSpecies == "Austropugetia crassa" ~ "Rhodophyta",
+                             genusSpecies == "Phorbas bergmontae" ~ "Porifera"
+  ))
+raw_biotaxa_5 <- raw_biotaxa_4 %>% 
+  mutate(phylum = coalesce(phylum, phylum1)) %>%
+  select( -phylum1)
+
+
+
+write_csv(raw_biotaxa_5, "B-236_Fatty-Acid_Collections_QAQC.csv")
 
 ####################### make species list
 
@@ -455,9 +516,9 @@ Reduce(intersect, list(Site1$genusSpecies, Site2$genusSpecies, Site3$genusSpecie
 # Total number of each species replicates per site
 species_replicates <- raw_biotaxa_f4
 
+# change these numbers and rerun to make table below
 reps <- 2
 sites <- 14
-
 
 reptable <- species_replicates %>%
   filter(totalSpecies >= reps)
