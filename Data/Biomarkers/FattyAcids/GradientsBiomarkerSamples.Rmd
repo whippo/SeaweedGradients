@@ -48,7 +48,7 @@ all_inverts <- samples %>%
 all_algae <- samples %>%
   filter(kingdom %in% c('Plantae', 'Chromista'))
 ```
-A total of `r length(all_inverts$ProjID)` invertebrate and `r length(all_algae$ProjID)` algal samples were collected\footnote{These numbers are approximate due to issues identified above.}.
+A total of `r length(all_inverts$ProjID)` invertebrate and `r length(all_algae$ProjID)` algal samples from 15 different sites were collected\footnote{These numbers are approximate due to issues identified above.}.
 
 $~$
 
@@ -66,21 +66,18 @@ ggplot(samples, aes(x = IceCoverCat, y = count)) +
          geom_col()
 ```
 
-```{r, echo = FALSE, fig.margin = TRUE, warning = FALSE}
-samples$count <- 1
-ggplot(samples, aes(x = IceCoverCat, y = count)) +
-         geom_col()
-```
-
 ## Summary of invertebrates collected
 
 \newthought{Number of invertebrates} collected varied by specific site, latitude, and ice cover parameters. The greatest number of samples were collected at: sites 05, 07:12, and 14:15 (>100 samples); ice cover categories 0.4, 0.6, and 0.8 (>300 samples); and at latitudes to be determined. 
 
+
 Invertebrates present with at least two replicates at all sites include *Nacella concinna* and *Odontaster validus*. 
 
 ```{r, echo = FALSE, fig.margin = TRUE, message = FALSE, warning = FALSE}
+library(dplyr)
 sitereps <- read_csv('core_species_siterep.csv')
-kable(sitereps[2:4])
+siterepkable <- kable(sitereps[1:10, 2:4]) 
+kable_styling(siterepkable, bootstrap_options = c("striped", "hover"))
 ```
 
 ## Summary of algae collected
