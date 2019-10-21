@@ -183,7 +183,10 @@ raw_biotaxa_2$genusSpecies <- raw_biotaxa_2$genusSpecies %>%
          "Astropugettia crassa" =          "Austropugetia crassa",
          "Pachymenia obicularis" =         "Pachymenia orbicularis",
          "Porphyra plocamienstris" =       "Porphyra plocamiestris",
-         "Laevilacunana antarctica" =      "Laevilacunaria antarctica"
+         "Laevilacunana antarctica" =      "Laevilacunaria antarctica",
+         "Diatom benthic" =                "Benthic diatoms",
+         "Benthic Diatoms sp." =           "Benthic diatoms",
+         "Diatoms sp." =                   "Benthic diatoms"
          
   )
 
@@ -518,7 +521,7 @@ species_replicates <- raw_biotaxa_f4
 
 # change these numbers and rerun to make table below
 reps <- 2
-sites <- 14
+sites <- 15
 
 reptable <- species_replicates %>%
   filter(totalSpecies >= reps)

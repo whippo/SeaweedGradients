@@ -73,16 +73,30 @@ ggplot(samples, aes(x = IceCoverCat, y = count)) +
 
 Invertebrates present with at least two replicates at all sites include *Nacella concinna* and *Odontaster validus*. 
 
+\newthought{The following table} lists all collected invertebrates with the number of replicates for the number of sites with that replicate size. 
+
 ```{r, echo = FALSE, fig.margin = TRUE, message = FALSE, warning = FALSE}
 library(dplyr)
 sitereps <- read_csv('core_species_siterep.csv')
-siterepkable <- kable(sitereps[1:10, 2:4]) 
-kable_styling(siterepkable, bootstrap_options = c("striped", "hover"))
+siterepkable <- kable(sitereps[2:4], longtable = TRUE) 
+siterepkable
 ```
 
 ## Summary of algae collected
 
+```{r, echo = FALSE, messae = FALSE, warning = FALSE}
+algaesamps <- samples %>%
+  filter(phylum %in% c("Rhodophyta", "Chlorophyta", "Ochrophyta")) %>%
+  group_by(genusSpecies)
+algaltable <- algaesamps %>%
+  select(phylum, genusSpecies) %>%
+    arrange(desc(phylum)) %>%
+  distinct(phylum, genusSpecies) %>%
 
+  kable()
+algaltable
+  
+```
 
 You can also include things in the margin that are not numbered with the margin note command\marginnote{Like this.}.
 
