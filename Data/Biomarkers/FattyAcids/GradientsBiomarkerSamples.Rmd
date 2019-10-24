@@ -34,6 +34,21 @@ phyla <- phyla %>%
 unique(phyla)
 ```
 
+
+```{r, echo = FALSE, fig.margin = TRUE, warning = FALSE}
+samples$count <- 1
+ggplot(samples, aes(x = SiteID, y = count)) +
+         geom_col()
+# turn this into latitude figure
+```
+
+```{r, echo = FALSE, fig.margin = TRUE, warning = FALSE}
+samples$count <- 1
+ggplot(samples, aes(x = IceCoverCat, y = count)) +
+         geom_col()
+```
+
+
 **Classes**
 ```{r, echo = FALSE}
 class <- unique(samples$class)
@@ -48,30 +63,50 @@ all_inverts <- samples %>%
 all_algae <- samples %>%
   filter(kingdom %in% c('Plantae', 'Chromista'))
 ```
-A total of `r length(all_inverts$ProjID)` invertebrate and `r length(all_algae$ProjID)` algal samples from 15 different sites were collected\footnote{These numbers are approximate due to issues identified above.}.
+A total of `r length(all_inverts$ProjID)` invertebrate and `r length(all_algae$ProjID)` algal samples from 15 different sites were collected\footnote{These numbers are approximate due to issues identified above.}. The most abundnant organisms in terms of replicates include:
+```{r, echo = FALSE}
+most_taxa <- samples %>%
+  select(Replicate, genusSpecies) %>%
+  group_by(genusSpecies) %>%
+  summarise(sum(Replicate)) 
+names(most_taxa)[names(most_taxa)=="sum(Replicate)"] <- "Replicates"
+arrange(most_taxa, desc(Replicates))
+```
+
 
 $~$
 
 Number of specimens collected varied by specific site, latitude, and ice cover. 
 
-```{r, echo = FALSE, fig.margin = TRUE, warning = FALSE}
-samples$count <- 1
-ggplot(samples, aes(x = SiteID, y = count)) +
-         geom_col()
+```{r, echo = FALSE, fig.fullwidth = TRUE, message = FALSE, warning = FALSE}
+library(viridis)
+ggplot(data = subset(samples, !is.na(phylum)), aes(SiteID)) +
+  geom_bar(aes(fill = phylum)) +
+  scale_fill_viridis(discrete = TRUE) +
+  theme_minimal() +
+  theme(legend.position = "right", text = element_text(size = 8)) +
+  guides(shape = guide_legend(override.aes = list(size = 1))) +
+  theme(legend.title = element_text(size = 3), 
+               legend.text = element_text(size = 4))
 ```
 
-```{r, echo = FALSE, fig.margin = TRUE, warning = FALSE}
-samples$count <- 1
-ggplot(samples, aes(x = IceCoverCat, y = count)) +
-         geom_col()
-```
 
 ## Summary of invertebrates collected
 
 \newthought{Number of invertebrates} collected varied by specific site, latitude, and ice cover parameters. The greatest number of samples were collected at: sites 05, 07:12, and 14:15 (>100 samples); ice cover categories 0.4, 0.6, and 0.8 (>300 samples); and at latitudes to be determined. 
 
 
-Invertebrates present with at least two replicates at all sites include *Nacella concinna* and *Odontaster validus*. 
+Invertebrates present with at least two replicates at all sites include *Nacella concinna* and *Odontaster validus*. The most commonly sampled invertebrates include:
+
+```{r, echo = FALSE}
+most_inverts <- samples %>%
+  filter(kingdom == "Animalia" | is.na(kingdom)) %>%
+  select(Replicate, genusSpecies) %>%
+  group_by(genusSpecies) %>%
+  summarise(sum(Replicate)) 
+names(most_inverts)[names(most_inverts)=="sum(Replicate)"] <- "Replicates"
+arrange(most_inverts, desc(Replicates))
+```
 
 \newthought{The following table} lists all collected invertebrates with the number of replicates for the number of sites with that replicate size. 
 
@@ -82,7 +117,21 @@ siterepkable <- kable(sitereps[2:4], longtable = TRUE)
 siterepkable
 ```
 
+Roughly 20 invertebrate species have a mimimum required number of reps (3) across six (6) sites. These numbers decrease as you increase the number of reps or number of sites needed,
+
 ## Summary of algae collected
+
+\newthought{Algal collections} comprised roughly `r length(all_algae$ProjID)/length(samples$ProjID)*100`% of all samples taken. 
+
+```{r, echo = FALSE}
+most_algae <- samples %>%
+  filter(kingdom %in% c('Plantae', 'Chromista')) %>%
+  select(Replicate, genusSpecies) %>%
+  group_by(genusSpecies) %>%
+  summarise(sum(Replicate)) 
+names(most_algae)[names(most_algae)=="sum(Replicate)"] <- "Replicates"
+arrange(most_algae, desc(Replicates))
+```
 
 ```{r, echo = FALSE, messae = FALSE, warning = FALSE}
 algaesamps <- samples %>%
