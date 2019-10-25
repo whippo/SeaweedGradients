@@ -29,7 +29,7 @@
 # RECENT CHANGES TO SCRIPT                                                        #
 # LOAD PACKAGES                                                                   #
 # READ IN AND PREPARE DATA                                                        #
-# SPECIES NAMES & LIST                                                            # 
+# SPECIES NAMES & LIST                                                            #
 # COLLECTION VISUALIZATIONS                                                       #
 # IDENTIFY TARGET SPECIES                                                         #
 #                                                                                 #
