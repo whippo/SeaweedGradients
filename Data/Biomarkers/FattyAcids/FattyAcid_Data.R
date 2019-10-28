@@ -250,9 +250,16 @@ raw_biotaxa_5 <- raw_biotaxa_4 %>%
   mutate(phylum = coalesce(phylum, phylum1)) %>%
   select( -phylum1)
 
+# add gps collection location for each sample
+
+ant_gps <- read.csv("FinalSiteLocations.csv", colClasses=c("SiteID"="character"))
+
+raw_biotaxa_6 <- raw_biotaxa_5 %>%
+  left_join(ant_gps, by = 'SiteID')
 
 
-write_csv(raw_biotaxa_5, "B-236_Fatty-Acid_Collections_QAQC.csv")
+
+# write_csv(raw_biotaxa_6, "B-236_Fatty-Acid_Collections_QAQC.csv")
 
 ####################### make species list
 

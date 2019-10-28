@@ -37,9 +37,11 @@ unique(phyla)
 
 ```{r, echo = FALSE, fig.margin = TRUE, warning = FALSE}
 samples$count <- 1
-ggplot(samples, aes(x = SiteID, y = count)) +
-         geom_col()
-# turn this into latitude figure
+samples$LAT_DD.1 <- as.factor(samples$LAT_DD.1)
+ggplot(samples, aes(x = LAT_DD.1, y = count)) +
+         geom_col() + 
+  theme(axis.text.x = element_text(angle = 270))
+          
 ```
 
 ```{r, echo = FALSE, fig.margin = TRUE, warning = FALSE}
@@ -66,11 +68,11 @@ all_algae <- samples %>%
 A total of `r length(all_inverts$ProjID)` invertebrate and `r length(all_algae$ProjID)` algal samples from 15 different sites were collected\footnote{These numbers are approximate due to issues identified above.}. The most abundnant organisms in terms of replicates include:
 ```{r, echo = FALSE}
 most_taxa <- samples %>%
-  select(Replicate, genusSpecies) %>%
+  select(count, genusSpecies) %>%
   group_by(genusSpecies) %>%
-  summarise(sum(Replicate)) 
-names(most_taxa)[names(most_taxa)=="sum(Replicate)"] <- "Replicates"
-arrange(most_taxa, desc(Replicates))
+  summarise(sum(count)) 
+names(most_taxa)[names(most_taxa)=="sum(count)"] <- "count"
+arrange(most_taxa, desc(count))
 ```
 
 
@@ -80,8 +82,8 @@ Number of specimens collected varied by specific site, latitude, and ice cover.
 
 ```{r, echo = FALSE, fig.fullwidth = TRUE, message = FALSE, warning = FALSE}
 library(viridis)
-ggplot(data = subset(samples, !is.na(phylum)), aes(SiteID)) +
-  geom_bar(aes(fill = phylum)) +
+ggplot(data = subset(samples, !is.na(phylum)), aes(x = SiteID, y = count)) +
+  geom_col(aes(fill = phylum)) +
   scale_fill_viridis(discrete = TRUE) +
   theme_minimal() +
   theme(legend.position = "right", text = element_text(size = 8)) +
@@ -101,11 +103,11 @@ Invertebrates present with at least two replicates at all sites include *Nacella
 ```{r, echo = FALSE}
 most_inverts <- samples %>%
   filter(kingdom == "Animalia" | is.na(kingdom)) %>%
-  select(Replicate, genusSpecies) %>%
+  select(count, genusSpecies) %>%
   group_by(genusSpecies) %>%
-  summarise(sum(Replicate)) 
-names(most_inverts)[names(most_inverts)=="sum(Replicate)"] <- "Replicates"
-arrange(most_inverts, desc(Replicates))
+  summarise(sum(count)) 
+names(most_inverts)[names(most_inverts)=="sum(count)"] <- "count"
+arrange(most_inverts, desc(count))
 ```
 
 \newthought{The following table} lists all collected invertebrates with the number of replicates for the number of sites with that replicate size. 
@@ -121,16 +123,16 @@ Roughly 20 invertebrate species have a mimimum required number of reps (3) acros
 
 ## Summary of algae collected
 
-\newthought{Algal collections} comprised roughly `r length(all_algae$ProjID)/length(samples$ProjID)*100`% of all samples taken. 
+\newthought{Algal collections} comprised roughly `r round(length(all_algae$ProjID)/length(samples$ProjID)*100)`% of all samples taken. 
 
 ```{r, echo = FALSE}
 most_algae <- samples %>%
   filter(kingdom %in% c('Plantae', 'Chromista')) %>%
-  select(Replicate, genusSpecies) %>%
+  select(count, genusSpecies) %>%
   group_by(genusSpecies) %>%
-  summarise(sum(Replicate)) 
-names(most_algae)[names(most_algae)=="sum(Replicate)"] <- "Replicates"
-arrange(most_algae, desc(Replicates))
+  summarise(sum(count)) 
+names(most_algae)[names(most_algae)=="sum(count)"] <- "count"
+arrange(most_algae, desc(count))
 ```
 
 ```{r, echo = FALSE, messae = FALSE, warning = FALSE}
