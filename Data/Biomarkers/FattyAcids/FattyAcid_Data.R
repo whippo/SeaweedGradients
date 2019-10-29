@@ -267,7 +267,7 @@ species_list <-raw_biotaxa_2 %>%
   group_by(genusSpecies) %>% 
   tally()
 
-write_csv(species_list, "B236_fattyacid-species-list.csv")
+# write_csv(species_list, "B236_fattyacid-species-list.csv")
 
 ####################### extract algal species
 
@@ -275,7 +275,7 @@ algaetable <- checkedtaxatable %>%
   filter(kingdom != 'Animalia')
 algaelist <- unique(algaetable$valid_name)
 
-write.csv(algaelist, "algaetable.csv")
+# write.csv(algaelist, "algaetable.csv")
 
 
 ####################### species found at all sites
@@ -337,7 +337,7 @@ Reduce(intersect, list(Site1$genusSpecies, Site2$genusSpecies, Site3$genusSpecie
 # COLLECTION VISUALIZATIONS                                                       #
 ###################################################################################
 
-raw_biotaxa_f1 <- raw_biotaxa_2
+raw_biotaxa_f1 <- raw_biotaxa_6
 raw_biotaxa_f1$count <- 1
 
 # per individual
@@ -434,6 +434,14 @@ raw_biotaxa_f4 <- raw_biotaxa_f4 %>%
 raw_biotaxa_f4 <- raw_biotaxa_f4 %>% 
   mutate(phylum = coalesce(phylum, phylum1)) 
 
+# for latitude tables
+raw_biotaxa_f5 <- raw_biotaxa_f1 %>%
+  group_by(LAT_DD.1, genusSpecies) %>%
+  summarize(sum(count))
+# rename column
+names(raw_biotaxa_f5)[names(raw_biotaxa_f5)=="sum(count)"] <- "totalSpecies"
+raw_biotaxa_f5$LAT_DD.1 <- as.character(raw_biotaxa_f5$LAT_DD.1)
+
 
 # rough plot of species by site
 ggplot(data = raw_biotaxa_f3, aes(x = SiteID, y = genusSpecies)) +
@@ -462,7 +470,16 @@ ggplot(data = raw_biotaxa_f4, aes(x = SiteID, y = genusSpecies)) +
   theme(panel.background = element_rect(fill = 'black')) +
   geom_text(show.legend = FALSE, colour = "white", aes(label = totalSpecies)) 
   
+
 str(raw_biotaxa_f4)
+
+# heatmap by latitude
+ggplot(data = raw_biotaxa_f5, aes(x = LAT_DD.1, y = genusSpecies)) +
+  geom_tile(aes(fill = totalSpecies)) +
+  scale_fill_viridis(option = "B", begin = 0.3, end = 1) +
+  theme_dark() +
+  theme(panel.background = element_rect(fill = 'black')) +
+  geom_text(show.legend = FALSE, colour = "white", aes(label = totalSpecies)) 
 
 ###################################################################################
 # IDENTIFY TARGET SPECIES                                                         #
