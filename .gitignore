@@ -6,3 +6,4 @@
 Images
 *.log
 GradientsBiomarkerSample_files
+*.~lock

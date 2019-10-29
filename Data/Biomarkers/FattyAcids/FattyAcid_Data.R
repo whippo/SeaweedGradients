@@ -86,6 +86,10 @@ raw_biotaxa_1$IceCoverCat <- as.numeric(as.character(raw_biotaxa_1$IceCoverCat))
 # fix ice cover cat mistake in site 9
 raw_biotaxa_1[679:680, 6] <- 0.6
 
+# NEED TO CONFIRM THIS IS THE CORRECT ICE COVER VALUE FOR SITE 14, and XX values
+raw_biotaxa_1 <- raw_biotaxa_1 %>%
+  mutate(IceCoverCat = if_else(is.na(IceCoverCat), 0.5, IceCoverCat))
+
 ###################################################################################
 # SPECIES NAMES & LIST                                                            #
 ###################################################################################
@@ -121,6 +125,8 @@ taxatable3 <- taxacheck3 %>%
 taxatable3 <- taxatable3[,2:29]
 
 checkedtaxatable <- bind_rows(taxatable1, taxatable2, taxatable3)
+checkedtaxatable <- checkedtaxatable %>%
+  filter(status == "accepted")
 
 # ID species not returned and join in table
 species_notreturned <- setdiff(taxon_names, checkedtaxatable$scientificname)
@@ -263,7 +269,7 @@ raw_biotaxa_6 <- raw_biotaxa_5 %>%
 
 ####################### make species list
 
-species_list <-raw_biotaxa_2 %>% 
+species_list <-raw_biotaxa_6 %>% 
   group_by(genusSpecies) %>% 
   tally()
 
@@ -280,49 +286,49 @@ algaelist <- unique(algaetable$valid_name)
 
 ####################### species found at all sites
 
-Site1 <- raw_biotaxa_2 %>%
+Site1 <- raw_biotaxa_6 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "01")
-Site2 <- raw_biotaxa_2 %>%
+Site2 <- raw_biotaxa_6 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "02")
-Site3 <- raw_biotaxa_2 %>%
+Site3 <- raw_biotaxa_6 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "03")
-Site4 <- raw_biotaxa_2 %>%
+Site4 <- raw_biotaxa_6 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "04")
-Site5 <- raw_biotaxa_2 %>%
+Site5 <- raw_biotaxa_6 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "05")
-Site6 <- raw_biotaxa_2 %>%
+Site6 <- raw_biotaxa_6 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "06")
-Site7 <- raw_biotaxa_2 %>%
+Site7 <- raw_biotaxa_6 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "07")
-Site8 <- raw_biotaxa_2 %>%
+Site8 <- raw_biotaxa_6 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "08")
-Site9 <- raw_biotaxa_2 %>%
+Site9 <- raw_biotaxa_6 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "09")
-Site10 <- raw_biotaxa_2 %>%
+Site10 <- raw_biotaxa_6 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "10")
-Site11 <- raw_biotaxa_2 %>%
+Site11 <- raw_biotaxa_6 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "11")
-Site12 <- raw_biotaxa_2 %>%
+Site12 <- raw_biotaxa_6 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "12")
-Site13 <- raw_biotaxa_2 %>%
+Site13 <- raw_biotaxa_6 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "13")
-Site14 <- raw_biotaxa_2 %>%
+Site14 <- raw_biotaxa_6 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "14")
-Site15 <- raw_biotaxa_2 %>%
+Site15 <- raw_biotaxa_6 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "15")
 
@@ -488,49 +494,49 @@ ggplot(data = raw_biotaxa_f5, aes(x = LAT_DD.1, y = genusSpecies)) +
 
 ####################### species found at all sites
 
-Site1 <- raw_biotaxa_2 %>%
+Site1 <- raw_biotaxa_6 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "01")
-Site2 <- raw_biotaxa_2 %>%
+Site2 <- raw_biotaxa_6 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "02")
-Site3 <- raw_biotaxa_2 %>%
+Site3 <- raw_biotaxa_6 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "03")
-Site4 <- raw_biotaxa_2 %>%
+Site4 <- raw_biotaxa_6 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "04")
-Site5 <- raw_biotaxa_2 %>%
+Site5 <- raw_biotaxa_6 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "05")
-Site6 <- raw_biotaxa_2 %>%
+Site6 <- raw_biotaxa_6 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "06")
-Site7 <- raw_biotaxa_2 %>%
+Site7 <- raw_biotaxa_6 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "07")
-Site8 <- raw_biotaxa_2 %>%
+Site8 <- raw_biotaxa_6 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "08")
-Site9 <- raw_biotaxa_2 %>%
+Site9 <- raw_biotaxa_6 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "09")
-Site10 <- raw_biotaxa_2 %>%
+Site10 <- raw_biotaxa_6 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "10")
-Site11 <- raw_biotaxa_2 %>%
+Site11 <- raw_biotaxa_6 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "11")
-Site12 <- raw_biotaxa_2 %>%
+Site12 <- raw_biotaxa_6 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "12")
-Site13 <- raw_biotaxa_2 %>%
+Site13 <- raw_biotaxa_6 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "13")
-Site14 <- raw_biotaxa_2 %>%
+Site14 <- raw_biotaxa_6 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "14")
-Site15 <- raw_biotaxa_2 %>%
+Site15 <- raw_biotaxa_6 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "15")
 
@@ -545,7 +551,7 @@ species_replicates <- raw_biotaxa_f4
 
 # change these numbers and rerun to make table below
 reps <- 2
-sites <- 15
+sites <- 14
 
 reptable <- species_replicates %>%
   filter(totalSpecies >= reps)
@@ -583,6 +589,6 @@ core_2_14$sites <- 14
 core_siterep <- bind_rows(core_3_6, core_3_8, core_3_10, core_3_14,
                           core_2_10, core_2_14)
 
-write.csv(core_siterep, "core_species_siterep.csv")
+# write.csv(core_siterep, "core_species_siterep.csv")
 #####
 #<<<<<<<<<<<<<<<<<<<<<<<<<<END OF SCRIPT>>>>>>>>>>>>>>>>>>>>>>>>#

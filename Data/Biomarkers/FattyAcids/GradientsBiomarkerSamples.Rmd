@@ -1,7 +1,7 @@
 ---
 title: "Biomarker Sample Summary"
 author: "Ross Whippo"
-date: "10/17/2019"
+date: "`r format(Sys.time(), '%Y/%m/%d')`"
 output: 
   tufte::tufte_handout: default
   tufte::tufte_html: default
@@ -26,6 +26,10 @@ samples <- read_csv("B-236_Fatty-Acid_Collections_QAQC.csv")
 
 $~$
 
+The Phyla and Classes collected include:
+
+$~$
+
 **Phyla**
 ```{r, echo = FALSE}
 phyla <- unique(samples$phylum)
@@ -43,7 +47,9 @@ ggplot(samples, aes(x = LAT_DD.1, y = count)) +
   theme(axis.text.x = element_text(angle = 270))
           
 ```
-
+```{marginfigure}
+These figures show the number of samples collected (count) by latitude and ice cover.
+```
 ```{r, echo = FALSE, fig.margin = TRUE, warning = FALSE}
 samples$count <- 1
 ggplot(samples, aes(x = IceCoverCat, y = count)) +
@@ -78,9 +84,9 @@ arrange(most_taxa, desc(count))
 
 $~$
 
-Number of specimens collected varied by specific site, latitude, and ice cover. 
+Number of specimens collected varied by specific site, latitude, and ice cover as seen in figures \ref{fig:allsite}, \ref{fig:alllat}, and \ref{fig:allice}. 
 
-```{r, echo = FALSE, fig.fullwidth = TRUE, message = FALSE, warning = FALSE, fig.cap = "Number of samples collected per site by phylum"}
+```{r, echo = FALSE, fig.fullwidth = TRUE, message = FALSE, warning = FALSE, fig.cap = "Number of samples collected per site by phylum.\\label{fig:allsite}"}
 library(viridis)
 ggplot(data = subset(samples, !is.na(phylum)), aes(x = SiteID, y = count)) +
   geom_col(aes(fill = phylum)) +
@@ -92,16 +98,8 @@ ggplot(data = subset(samples, !is.na(phylum)), aes(x = SiteID, y = count)) +
                legend.text = element_text(size = 4))
 ```
 
-\newthought{The following table} lists all collected organisms with the number of replicates for the number of sites with that replicate size. 
 
-```{r, echo = FALSE, fig.margin = TRUE, message = FALSE, warning = FALSE}
-library(dplyr)
-sitereps <- read_csv('core_species_siterep.csv')
-siterepkable <- kable(sitereps[2:4], longtable = TRUE) 
-siterepkable
-```
-
-```{r, echo = FALSE, fig.fullwidth = TRUE, warning = FALSE, message = FALSE, fig.height = 20, fig.width = 15, fig.cap = "Heat map of number of reps per species collected by latitude."}
+```{r, echo = FALSE, fig.fullwidth = TRUE, warning = FALSE, message = FALSE, fig.height = 20, fig.width = 15, fig.cap = "Heat map of number of reps per species collected by latitude.\\label{fig:alllat}"}
 all_heat <- samples
 # for latitude tables
 all_heat_lat <- all_heat %>%
@@ -115,15 +113,15 @@ ggplot(data = all_heat_lat, aes(x = LAT_DD.1, y = genusSpecies)) +
   scale_fill_viridis(option = "B", begin = 0.3, end = 1) +
   theme_dark() +
   theme(panel.background = element_rect(fill = 'black')) +
-  theme(text = element_text(size = 12)) +
-  geom_text(show.legend = FALSE, colour = "white", size = 8, aes(label = totalSpecies)) + 
+  theme(text = element_text(size = 18)) +
+  geom_text(show.legend = FALSE, colour = "white", size = 6, aes(label = totalSpecies)) + 
   theme(axis.text.x = element_text(angle = 270))
 
 ```
 
-```{r, echo = FALSE, fig.fullwidth = TRUE, warning = FALSE, message = FALSE, fig.height = 20, fig.width = 15, fig.cap = "Heat map of number of reps per species collected by ice cover category."}
+```{r, echo = FALSE, fig.fullwidth = TRUE, warning = FALSE, message = FALSE, fig.height = 20, fig.width = 15, fig.cap = "Heat map of number of reps per species collected by ice cover category.\\label{fig:allice}"}
 all_heat <- samples
-# for latitude tables
+# for ice tables
 all_heat_cover <- all_heat %>%
   group_by(IceCoverCat, genusSpecies) %>%
   summarize(sum(count))
@@ -134,56 +132,28 @@ ggplot(data = all_heat_cover, aes(x = IceCoverCat, y = genusSpecies)) +
   scale_fill_viridis(option = "B", begin = 0.3, end = 1) +
   theme_dark() +
   theme(panel.background = element_rect(fill = 'black')) +
-  theme(text = element_text(size = 12)) +
-  geom_text(show.legend = FALSE, colour = "white", size = 8, aes(label = totalSpecies)) + 
+  theme(text = element_text(size = 18)) +
+  geom_text(show.legend = FALSE, colour = "white", size = 6, aes(label = totalSpecies)) + 
   theme(axis.text.x = element_text(angle = 270))
 
 ```
 
+\newthought{The following table} lists all collected organisms with the number of replicates for the number of sites with that replicate size. 
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+library(dplyr)
+sitereps <- read_csv('core_species_siterep.csv')
+siterepkable <- kable(sitereps[2:4], longtable = TRUE) 
+siterepkable
+```
 
 ## Summary of invertebrates collected
 
-\newthought{Number of invertebrates} collected varied by specific site, latitude, and ice cover parameters. The greatest number of samples were collected at: sites 05, 07:12, and 14:15 (>100 samples); ice cover categories 0.4, 0.6, and 0.8 (>300 samples); and at latitudes to be determined. 
+\newthought{Number of invertebrates} collected varied by specific site, latitude, and ice cover parameters. The greatest number of samples were collected at: sites 05, 07:12, and 14:15 (>100 samples); ice cover categories 0.4, 0.6, and 0.8 (>300 samples); and at lower latitudes with the majority of sites below 65$^{\circ}$ each having >100 samples each. 
 
-```{r, echo = FALSE, fig.fullwidth = TRUE, warning = FALSE, message = FALSE, fig.height = 20, fig.width = 15, fig.cap = "Heat map of number of reps per invertebrate species collected by latitude."}
-invert_heat <- filter(samples, kingdom == "Animalia")
-# for ice cover heat maps 
-invert_heat_lat <- invert_heat %>%
-  group_by(LAT_DD.1, genusSpecies) %>%
-  summarize(sum(count))
-# rename column
-names(invert_heat_lat)[names(invert_heat_lat)=="sum(count)"] <- "totalSpecies"
-ggplot(data = invert_heat_lat, aes(x = LAT_DD.1, y = genusSpecies)) +
-  geom_tile(aes(fill = totalSpecies)) +
-  scale_fill_viridis(option = "B", begin = 0.3, end = 1) +
-  theme_dark() +
-  theme(panel.background = element_rect(fill = 'black')) +
-  theme(text = element_text(size = 12)) +
-  geom_text(show.legend = FALSE, colour = "white", size = 8, aes(label = totalSpecies)) + 
-  theme(axis.text.x = element_text(angle = 270))
+$~$
 
-```
-
-```{r, echo = FALSE, fig.fullwidth = TRUE, warning = FALSE, message = FALSE, fig.height = 20, fig.width = 15, fig.cap = "Heat map of number of reps per invertebrate species collected by ice cover category."}
-invert_heat <- filter(samples, kingdom == "Animalia")
-# for ice cover heat maps 
-invert_heat_cover <- invert_heat %>%
-  group_by(IceCoverCat, genusSpecies) %>%
-  summarize(sum(count))
-# rename column
-names(invert_heat_cover)[names(invert_heat_cover)=="sum(count)"] <- "totalSpecies"
-ggplot(data = invert_heat_cover, aes(x = IceCoverCat, y = genusSpecies)) +
-  geom_tile(aes(fill = totalSpecies)) +
-  scale_fill_viridis(option = "B", begin = 0.3, end = 1) +
-  theme_dark() +
-  theme(panel.background = element_rect(fill = 'black')) +
-  theme(text = element_text(size = 12)) +
-  geom_text(show.legend = FALSE, colour = "white", size = 8, aes(label = totalSpecies)) + 
-  theme(axis.text.x = element_text(angle = 270))
-
-```
-
-Invertebrates present with at least two replicates at all sites include *Nacella concinna* and *Odontaster validus*. The most commonly sampled invertebrates include:
+Invertebrates present with at least two replicates at all sites include *Nacella concinna* and *Odontaster validus*\footnote{\textit{Cnemidocarpa} sp. has at least two (2) replicates for all but one (1) site}. The most commonly sampled invertebrates include:
 
 ```{r, echo = FALSE}
 most_inverts <- samples %>%
@@ -196,7 +166,47 @@ arrange(most_inverts, desc(count))
 ```
 
 
-Roughly 20 invertebrate species have a mimimum required number of reps (3) across six (6) sites. These numbers decrease as you increase the number of reps or number of sites needed,
+Roughly 13 invertebrate species have a mimimum required number of reps (3) across six (6) sites. These numbers decrease as you increase the number of reps or number of sites desired. Invertebrates tended to be distributed more evenly across all gradients than algae (see below). Distribution of invertebrates by latitude and ice cover can be found in figures \ref{fig:invertlat} and \ref{fig:invertice} respectively. 
+
+```{r, echo = FALSE, fig.fullwidth = TRUE, warning = FALSE, message = FALSE, fig.height = 20, fig.width = 15, fig.cap = "Heat map of number of reps per invertebrate species collected by latitude.\\label{fig:invertlat}"}
+invert_heat <- samples %>%
+  filter(kingdom == "Animalia" | is.na(kingdom), genusSpecies != "Benthic diatoms")
+invert_heat_lat <- invert_heat %>%
+  group_by(LAT_DD.1, genusSpecies) %>%
+  summarize(sum(count))
+# rename column
+names(invert_heat_lat)[names(invert_heat_lat)=="sum(count)"] <- "totalSpecies"
+ggplot(data = invert_heat_lat, aes(x = LAT_DD.1, y = genusSpecies)) +
+  geom_tile(aes(fill = totalSpecies)) +
+  scale_fill_viridis(option = "B", begin = 0.3, end = 1) +
+  theme_dark() +
+  theme(panel.background = element_rect(fill = 'black')) +
+  theme(text = element_text(size = 22)) +
+  geom_text(show.legend = FALSE, colour = "white", size = 8, aes(label = totalSpecies)) + 
+  theme(axis.text.x = element_text(angle = 270))
+
+```
+
+```{r, echo = FALSE, fig.fullwidth = TRUE, warning = FALSE, message = FALSE, fig.height = 20, fig.width = 15, fig.cap = "Heat map of number of reps per invertebrate species collected by ice cover category.\\label{fig:invertice}"}
+invert_heat <- filter(samples, kingdom == "Animalia" | is.na(kingdom), genusSpecies != "Benthic diatoms")
+# for ice cover heat maps 
+invert_heat_cover <- invert_heat %>%
+  group_by(IceCoverCat, genusSpecies) %>%
+  summarize(sum(count))
+# rename column
+names(invert_heat_cover)[names(invert_heat_cover)=="sum(count)"] <- "totalSpecies"
+ggplot(data = invert_heat_cover, aes(x = IceCoverCat, y = genusSpecies)) +
+  geom_tile(aes(fill = totalSpecies)) +
+  scale_fill_viridis(option = "B", begin = 0.3, end = 1) +
+  theme_dark() +
+  theme(panel.background = element_rect(fill = 'black')) +
+  theme(text = element_text(size = 22)) +
+  geom_text(show.legend = FALSE, colour = "white", size = 8, aes(label = totalSpecies)) + 
+  theme(axis.text.x = element_text(angle = 270))
+
+```
+
+\pagebreak
 
 ## Summary of algae collected
 
@@ -212,21 +222,30 @@ names(most_algae)[names(most_algae)=="sum(count)"] <- "count"
 arrange(most_algae, desc(count))
 ```
 
-```{r, echo = FALSE, messae = FALSE, warning = FALSE}
+
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
 algaesamps <- samples %>%
   filter(phylum %in% c("Rhodophyta", "Chlorophyta", "Ochrophyta")) %>%
   group_by(genusSpecies)
 algaltable <- algaesamps %>%
   select(phylum, genusSpecies) %>%
     arrange(desc(phylum)) %>%
-  distinct(phylum, genusSpecies) %>%
-
-  kable()
-algaltable
-  
+  distinct(phylum, genusSpecies)
 ```
 
-```{r, echo = FALSE, fig.fullwidth = TRUE, warning = FALSE, message = FALSE, fig.height = 20, fig.width = 15, fig.cap = "Heat map of number of reps per algal species collected by latitude."}
+\newthought{A total of} `r length(algaltable$phylum)` algal species were collected, with the majority of algae representing the phylum Rhodophyta (~`r round(nrow(filter(algaltable, phylum == "Rhodophyta"))/length(algaltable$phylum)*100)`%), and only one representative of the Chorohyta, with the remainder from the Ochrophyta. Algal diversity was concentrated in the lower latitudes and lower ice cover zones as seen in figures \ref{fig:algallat} and \ref{fig:algalice} respectively. 
+
+$~$
+
+This table summarises the identity of all algal species collected and their respective phyla.
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+kable_algae <-kable(algaltable, longtable = TRUE)
+kable_algae
+```
+
+```{r, echo = FALSE, fig.fullwidth = TRUE, warning = FALSE, message = FALSE, fig.height = 20, fig.width = 15, fig.cap = "Heat map of number of reps per algal species collected by latitude.\\label{fig:algallat}"}
 algal_heat <- filter(samples, kingdom %in% c('Plantae', 'Chromista'))
 # for ice cover heat maps 
 algal_heat_lat <- algal_heat %>%
@@ -239,13 +258,13 @@ ggplot(data = algal_heat_lat, aes(x = LAT_DD.1, y = genusSpecies)) +
   scale_fill_viridis(option = "B", begin = 0.3, end = 1) +
   theme_dark() +
   theme(panel.background = element_rect(fill = 'black')) +
-  theme(text = element_text(size = 12)) +
+  theme(text = element_text(size = 22)) +
   geom_text(show.legend = FALSE, colour = "white", size = 8, aes(label = totalSpecies)) + 
   theme(axis.text.x = element_text(angle = 270))
 
 ```
 
-```{r, echo = FALSE, fig.fullwidth = TRUE, warning = FALSE, message = FALSE, fig.height = 20, fig.width = 15, fig.cap = "Heat map of number of reps per algal species collected by ice cover category."}
+```{r, echo = FALSE, fig.fullwidth = TRUE, warning = FALSE, message = FALSE, fig.height = 20, fig.width = 15, fig.cap = "Heat map of number of reps per algal species collected by ice cover category.\\label{fig:algalice}"}
 algal_heat <- filter(samples, kingdom %in% c('Plantae', 'Chromista'))
 # for ice cover heat maps 
 algal_heat_cover <- algal_heat %>%
@@ -258,14 +277,9 @@ ggplot(data = algal_heat_cover, aes(x = IceCoverCat, y = genusSpecies)) +
   scale_fill_viridis(option = "B", begin = 0.3, end = 1) +
   theme_dark() +
   theme(panel.background = element_rect(fill = 'black')) +
-  theme(text = element_text(size = 12)) +
+  theme(text = element_text(size = 22)) +
   geom_text(show.legend = FALSE, colour = "white", size = 8, aes(label = totalSpecies)) + 
   theme(axis.text.x = element_text(angle = 270))
 
 ```
 
-You can also include things in the margin that are not numbered with the margin note command\marginnote{Like this.}.
-
-```
-this is inline code.
-```
