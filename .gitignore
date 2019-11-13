@@ -7,3 +7,5 @@ Images
 *.log
 GradientsBiomarkerSample_files
 *.~lock
+
+Data/Biomarkers/FattyAcids/.~lock.FinalSiteLocations.csv#
