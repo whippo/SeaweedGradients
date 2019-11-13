@@ -4,7 +4,7 @@
 # Data are current as of 2019-05-19                                              ##
 # Data source: B-236 Seaweed Gradients Cruise                                    ##
 # R code prepared by Ross Whippo                                                 ##
-# Last updated 2019-10-17                                                        ##
+# Last updated 2019-11-13                                                        ##
 #                                                                                ##
 ###################################################################################
 
@@ -44,6 +44,7 @@
 # 2019-05-13 Changed name of source files
 # 2019-05-19 Added phylum extractions, worked on IDing common species
 # 2019-10-17 Created QAQC .csv export for full data set for markdown summary script
+# 2019-11-14 Fixed incorrect kingdom assignments of algae
 
 ###################################################################################
 # LOAD PACKAGES                                                                   #
@@ -256,20 +257,45 @@ raw_biotaxa_5 <- raw_biotaxa_4 %>%
   mutate(phylum = coalesce(phylum, phylum1)) %>%
   select( -phylum1)
 
+# add missing kingdoms manually
+raw_biotaxa_6 <- raw_biotaxa_5 %>%
+  mutate(kingdom1 = case_when(phylum == "Rhodophyta" ~ "Plantae",
+                             phylum == "Ochrophyta" ~ "Chromista")
+                           )
+raw_biotaxa_7 <- raw_biotaxa_6 %>% 
+  mutate(kingdom = coalesce(kingdom, kingdom1)) %>%
+  select( -kingdom1)
+raw_biotaxa_7$kingdom <- raw_biotaxa_7$kingdom %>%
+  replace_na("Animalia")
 # add gps collection location for each sample
 
 ant_gps <- read.csv("FinalSiteLocations.csv", colClasses=c("SiteID"="character"))
+ant_gps$SiteID <- as.factor(ant_gps$SiteID)
 
-raw_biotaxa_6 <- raw_biotaxa_5 %>%
+# harmonize SiteID names
+
+ant_gps$SiteID <- ant_gps$SiteID %>%
+  recode("1" =        "01", 
+         "2" =        "02",
+         "3" =        "03",
+         "4" =        "04",
+         "5" =        "05",
+         "6" =        "06",
+         "7" =        "07",
+         "8" =        "08",
+         "9" =        "09"
+  )
+
+raw_biotaxa_8 <- raw_biotaxa_7 %>%
   left_join(ant_gps, by = 'SiteID')
 
 
 
-# write_csv(raw_biotaxa_6, "B-236_Fatty-Acid_Collections_QAQC.csv")
+# write_csv(raw_biotaxa_8, "B-236_Fatty-Acid_Collections_QAQC.csv")
 
 ####################### make species list
 
-species_list <-raw_biotaxa_6 %>% 
+species_list <-raw_biotaxa_8 %>% 
   group_by(genusSpecies) %>% 
   tally()
 
@@ -286,49 +312,49 @@ algaelist <- unique(algaetable$valid_name)
 
 ####################### species found at all sites
 
-Site1 <- raw_biotaxa_6 %>%
+Site1 <- raw_biotaxa_8 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "01")
-Site2 <- raw_biotaxa_6 %>%
+Site2 <- raw_biotaxa_8 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "02")
-Site3 <- raw_biotaxa_6 %>%
+Site3 <- raw_biotaxa_8 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "03")
-Site4 <- raw_biotaxa_6 %>%
+Site4 <- raw_biotaxa_8 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "04")
-Site5 <- raw_biotaxa_6 %>%
+Site5 <- raw_biotaxa_8 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "05")
-Site6 <- raw_biotaxa_6 %>%
+Site6 <- raw_biotaxa_8 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "06")
-Site7 <- raw_biotaxa_6 %>%
+Site7 <- raw_biotaxa_8 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "07")
-Site8 <- raw_biotaxa_6 %>%
+Site8 <- raw_biotaxa_8 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "08")
-Site9 <- raw_biotaxa_6 %>%
+Site9 <- raw_biotaxa_8 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "09")
-Site10 <- raw_biotaxa_6 %>%
+Site10 <- raw_biotaxa_8 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "10")
-Site11 <- raw_biotaxa_6 %>%
+Site11 <- raw_biotaxa_8 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "11")
-Site12 <- raw_biotaxa_6 %>%
+Site12 <- raw_biotaxa_8 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "12")
-Site13 <- raw_biotaxa_6 %>%
+Site13 <- raw_biotaxa_8 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "13")
-Site14 <- raw_biotaxa_6 %>%
+Site14 <- raw_biotaxa_8 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "14")
-Site15 <- raw_biotaxa_6 %>%
+Site15 <- raw_biotaxa_8 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "15")
 
@@ -343,7 +369,7 @@ Reduce(intersect, list(Site1$genusSpecies, Site2$genusSpecies, Site3$genusSpecie
 # COLLECTION VISUALIZATIONS                                                       #
 ###################################################################################
 
-raw_biotaxa_f1 <- raw_biotaxa_6
+raw_biotaxa_f1 <- raw_biotaxa_8
 raw_biotaxa_f1$count <- 1
 
 # per individual
@@ -494,49 +520,49 @@ ggplot(data = raw_biotaxa_f5, aes(x = LAT_DD.1, y = genusSpecies)) +
 
 ####################### species found at all sites
 
-Site1 <- raw_biotaxa_6 %>%
+Site1 <- raw_biotaxa_8 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "01")
-Site2 <- raw_biotaxa_6 %>%
+Site2 <- raw_biotaxa_8 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "02")
-Site3 <- raw_biotaxa_6 %>%
+Site3 <- raw_biotaxa_8 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "03")
-Site4 <- raw_biotaxa_6 %>%
+Site4 <- raw_biotaxa_8 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "04")
-Site5 <- raw_biotaxa_6 %>%
+Site5 <- raw_biotaxa_8 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "05")
-Site6 <- raw_biotaxa_6 %>%
+Site6 <- raw_biotaxa_8 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "06")
-Site7 <- raw_biotaxa_6 %>%
+Site7 <- raw_biotaxa_8 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "07")
-Site8 <- raw_biotaxa_6 %>%
+Site8 <- raw_biotaxa_8 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "08")
-Site9 <- raw_biotaxa_6 %>%
+Site9 <- raw_biotaxa_8 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "09")
-Site10 <- raw_biotaxa_6 %>%
+Site10 <- raw_biotaxa_8 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "10")
-Site11 <- raw_biotaxa_6 %>%
+Site11 <- raw_biotaxa_8 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "11")
-Site12 <- raw_biotaxa_6 %>%
+Site12 <- raw_biotaxa_8 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "12")
-Site13 <- raw_biotaxa_6 %>%
+Site13 <- raw_biotaxa_8 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "13")
-Site14 <- raw_biotaxa_6 %>%
+Site14 <- raw_biotaxa_8 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "14")
-Site15 <- raw_biotaxa_6 %>%
+Site15 <- raw_biotaxa_8 %>%
   group_by(SiteID, genusSpecies) %>%
   filter(SiteID == "15")
 
@@ -592,3 +618,10 @@ core_siterep <- bind_rows(core_3_6, core_3_8, core_3_10, core_3_14,
 # write.csv(core_siterep, "core_species_siterep.csv")
 #####
 #<<<<<<<<<<<<<<<<<<<<<<<<<<END OF SCRIPT>>>>>>>>>>>>>>>>>>>>>>>>#
+
+
+######### SCRATCH PAD
+
+invert_heat_lat <- invert_heat %>%
+  group_by(LAT_DD.1, genusSpecies) %>%
+  summarize(sum(count))

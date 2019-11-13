@@ -170,7 +170,7 @@ Roughly 13 invertebrate species have a mimimum required number of reps (3) acros
 
 ```{r, echo = FALSE, fig.fullwidth = TRUE, warning = FALSE, message = FALSE, fig.height = 20, fig.width = 15, fig.cap = "Heat map of number of reps per invertebrate species collected by latitude.\\label{fig:invertlat}"}
 invert_heat <- samples %>%
-  filter(kingdom == "Animalia" | is.na(kingdom), genusSpecies != "Benthic diatoms")
+  filter(kingdom == "Animalia")
 invert_heat_lat <- invert_heat %>%
   group_by(LAT_DD.1, genusSpecies) %>%
   summarize(sum(count))
