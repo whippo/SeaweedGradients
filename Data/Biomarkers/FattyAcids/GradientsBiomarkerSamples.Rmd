@@ -185,7 +185,7 @@ ggplot(data = invert_heat_lat, aes(x = LAT_DD.1, y = genusSpecies)) +
   geom_text(show.legend = FALSE, colour = "white", size = 8, aes(label = totalSpecies)) + 
   theme(axis.text.x = element_text(angle = 270))
 
-```
+  ```
 
 ```{r, echo = FALSE, fig.fullwidth = TRUE, warning = FALSE, message = FALSE, fig.height = 20, fig.width = 15, fig.cap = "Heat map of number of reps per invertebrate species collected by ice cover category.\\label{fig:invertice}"}
 invert_heat <- filter(samples, kingdom == "Animalia" | is.na(kingdom), genusSpecies != "Benthic diatoms")
