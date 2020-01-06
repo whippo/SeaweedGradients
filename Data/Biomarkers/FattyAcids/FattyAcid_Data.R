@@ -625,3 +625,6 @@ core_siterep <- bind_rows(core_3_6, core_3_8, core_3_10, core_3_14,
 invert_heat_lat <- invert_heat %>%
   group_by(LAT_DD.1, genusSpecies) %>%
   summarize(sum(count))
+
+toextract <- raw_biotaxa_8 %>%
+  filter(genusSpecies == 'Odontaster validus')
