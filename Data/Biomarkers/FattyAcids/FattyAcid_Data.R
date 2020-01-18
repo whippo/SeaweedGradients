@@ -4,7 +4,7 @@
 # Data are current as of 2019-05-19                                              ##
 # Data source: B-236 Seaweed Gradients Cruise                                    ##
 # R code prepared by Ross Whippo                                                 ##
-# Last updated 2019-11-13                                                        ##
+# Last updated 2020-01-17                                                        ##
 #                                                                                ##
 ###################################################################################
 
@@ -32,6 +32,7 @@
 # SPECIES NAMES & LIST                                                            #
 # COLLECTION VISUALIZATIONS                                                       #
 # IDENTIFY TARGET SPECIES                                                         #
+# EXTRACT SAMPLE COLLECTION DATES                                                 #
 #                                                                                 #
 ###################################################################################
 
@@ -45,6 +46,7 @@
 # 2019-05-19 Added phylum extractions, worked on IDing common species
 # 2019-10-17 Created QAQC .csv export for full data set for markdown summary script
 # 2019-11-14 Fixed incorrect kingdom assignments of algae
+# 2020-01-17 Updates are added to github file from here onward
 
 ###################################################################################
 # LOAD PACKAGES                                                                   #
@@ -616,6 +618,40 @@ core_siterep <- bind_rows(core_3_6, core_3_8, core_3_10, core_3_14,
                           core_2_10, core_2_14)
 
 # write.csv(core_siterep, "core_species_siterep.csv")
+
+###################################################################################
+# EXTRACT SAMPLE COLLECTION DATES                                                 #
+###################################################################################
+
+# create vector list of samples to be identified
+sampleList <- c("03F0154",
+                "04F0245",
+                "05F0328",
+                "07F0563",
+                "03F0184",
+                "04F0246",
+                "05F0329",
+                "07F0564",
+                "03F0167",
+                "07F0516", 
+                "07F0542",
+                "07F0546",
+                "07F0515",
+                "08F0601",
+                "07F0527",
+                "08F0608",
+                "07F0557",
+                "07F0558",
+                "02F0095",
+                "03F0175",
+                "04F0230",
+                "05F0317",
+                "08F0600",
+                "07F0472"
+)
+sampleDates <- raw_biotaxa_8 %>%
+  subset(ProjID %in% sampleList)
+
 #####
 #<<<<<<<<<<<<<<<<<<<<<<<<<<END OF SCRIPT>>>>>>>>>>>>>>>>>>>>>>>>#
 
