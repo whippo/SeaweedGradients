@@ -93,6 +93,11 @@ raw_biotaxa_1[679:680, 6] <- 0.6
 raw_biotaxa_1 <- raw_biotaxa_1 %>%
   mutate(IceCoverCat = if_else(is.na(IceCoverCat), 0.5, IceCoverCat))
 
+# Correct mis-labeled sample
+raw_biotaxa_1$ProjID <- as.character(raw_biotaxa_1$ProjID)
+raw_biotaxa_1$ProjID[823] <- "10F0855"
+
+
 ###################################################################################
 # SPECIES NAMES & LIST                                                            #
 ###################################################################################
