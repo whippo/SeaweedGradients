@@ -669,3 +669,37 @@ invert_heat_lat <- invert_heat %>%
 
 toextract <- raw_biotaxa_8 %>%
   filter(genusSpecies == 'Odontaster validus')
+
+table2_algae <- c("Adenocystis utricularis",
+                  "Ascoseira mirabilis",
+                  "Austropugetia crassa",
+                  "Ballia callitricha",
+                  "Callophyllis atrosanguinea",
+                  "Curdiea racovitzae",
+                  "Cystoclonium obtusangulum",
+                  "Cystosphaera jacquinotii",
+                  "Delisea pulchra",
+                  "Desmarestia anceps",
+                  "Desmarestia antarctica",
+                  "Georgiella confluens",
+                  "Gigartina skottsbergii",
+                  "Gymnogongrus antarcticus",
+                  "Hymenocladiopsis sp.",
+                  "Lambia antarctica",
+                  "Myriogramme smithii",
+                  "Pachymenia orbicularis",
+                  "Palmaria decipiens",
+                  "Pantoneura plocamioides",
+                  "Paraglossum salicifolium",
+                  "Phycodrys austrogeorgica",
+                  "Picconiella plumosa",
+                  "Porphyra plocamiestris",
+                  "Rhodokrambe lanigioides",
+                  "Syringoderma australe",
+                  "Trematocarpus antarcticus")
+)
+
+algal_species <- raw_biotaxa_2 %>%
+  filter(genusSpecies %in%  table2_algae)
+
+write_csv(algal_species, "~/Desktop/algaetable2.csv")
