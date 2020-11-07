@@ -47,8 +47,8 @@
   # READ IN AND PREPARE DATA                                                     ####
   #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   
-  peakexport <- read.csv("/home/ross/Desktop/GradientsOpenChrom/std4_250ng.mL_342020_1_peakexport.csv")
-  peaklist <- read.csv("/home/ross/Desktop/GradientsOpenChrom/std4_250ng.mL_342020_1_peaklist.csv")
+  peakexport <- read.csv("/home/ross/Desktop/GradientsOpenChrom/std3_100ng.mL_342020_4_peakexport.csv")
+  peaklist <- read.csv("/home/ross/Desktop/GradientsOpenChrom/std3_100ng.mL_342020_4_peaklist.csv")
   
   #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   # MANIPULATE DATA                                                              ####
@@ -125,9 +125,30 @@
     add_column(modus = "VV", .after = "Stop.RT")
   # add refernce column 
   peakdetector$ref <- "Reference" 
+  # remove traces
+  peakdetector$traces <- ""
   
-  write_delim(peakdetector, path = "~/Desktop/testdelim.txt", delim = "|", col_names = FALSE)
+  write_delim(peakdetector, path = "~/Desktop/peakdetect.txt", delim = "|", col_names = FALSE)
   
+    # TO USE SINGLE MZ FOR IDENTIFICATION USE THIS:
+  
+  mz_ident <- read.csv("Data/Biomarkers/FattyAcids/mz_integrate.csv")
+  singlemz_detect <- inner_join(joinedpeaks, mz_ident, by = "Name") 
+  
+ 
+  peakdetector <- singlemz_detect %>%
+    select(Start.RT, Stop.RT, m.z.y)
+  # add optimization statement
+  peakdetector$optimize <- "true"
+  # add valley valley option
+  peakdetector <- peakdetector %>%
+    add_column(modus = "VV", .after = "Stop.RT")
+  # add refernce column 
+  peakdetector$ref <- "Reference" 
+  # rename column
+  names(peakdetector)[names(peakdetector)=="m.z.y"] <- "traces"
+  
+  write_delim(peakdetector, path = "~/Desktop/singlemzdetect.txt", delim = "|", col_names = FALSE)
   
   # PEAK IDENTIFIER SCRIPT
   
@@ -141,11 +162,13 @@
     add_column(contributor = "Ross Whippo", .after = "comment")
   peakIDer <- peakIDer %>%
     add_column(referenceId = "na", .after = "contributor")
+  # remove traces
+  peakIDer$traces <- ""
   
   write_delim(peakIDer, path = "~/Desktop/peakIDer.txt", delim = "|", col_names = FALSE)
   
 
-############### SUBSECTION HERE
+  ############### SUBSECTION HERE
 
 ####
 #<<<<<<<<<<<<<<<<<<<<<<<<<<END OF SCRIPT>>>>>>>>>>>>>>>>>>>>>>>>#
@@ -206,6 +229,7 @@ peakIDer <- peakIDer %>%
   add_column(contributor = "Ross Whippo", .after = "comment")
 peakIDer <- peakIDer %>%
   add_column(referenceId = "na", .after = "contributor")
-# peakIDer$traces <- ""
+ peakIDer$traces <- ""
 
 write_delim(peakIDer, path = "~/Desktop/peakIDer.txt", delim = "|", col_names = FALSE)
+  
