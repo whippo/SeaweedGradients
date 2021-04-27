@@ -56,6 +56,10 @@ dummy_data <- read_csv("Data/Biomarkers/FattyAcids/dummy_sample_values.csv")
 # MANIPULATE DATA                                                              ####
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+# convert data to long form
+dummy_trans <- t(dummy_data)
+long_dummy <- dummy_trans %>%
+  pivot_longer(!X1, names_to = "")
 
 ############### SUBSECTION HERE
 
