@@ -85,13 +85,29 @@ grad_conc <- Gradients19_FA_Concs %>%
 grad_conc <- grad_conc %>% 
   drop_na(Conc)
 
-# Get original sample weights to standardize concentrations
-weight_ID <- Whippo_FA_extraction_log %>%
-  select(FAnumber, boatSampleWeight, boatAfterWeighing, projectID) %>%
-  filter(projectID %in% c("Gradients2019", "Gradients2019 - B sides"))
-
 # replace NAs with 0 in Conc
 grad_conc$Conc[is.na(grad_conc$Conc)] <- 0
+
+# extract FAnumber from sample name to join with weights
+grad_conc <- grad_conc %>%
+  mutate(FAnumber = substr(Sample, 14, 17))
+
+# Get original sample weights to standardize concentrations
+weight_ID <- Whippo_FA_extraction_log %>%
+  select(FAnumber, boatSampleWeight, boatAfterWeighing, projectID, evapVol) %>%
+  filter(projectID %in% c("Gradients2019", "Gradients2019 - B sides"))
+
+weight_net <- weight_ID %>%
+  mutate(weight = boatSampleWeight - boatAfterWeighing)
+
+conc_weight <- grad_conc %>%
+  left_join(weight_net, by = "FAnumber")
+
+conc_weight$evapVol <- recode(conc_weight$evapVol, "nd" = "1.5")
+conc_weight$evapVol <- as.numeric(conc_weight$evapVol)
+
+final_concs <- conc_weight %>%
+  mutate(stand_conc = ((Conc*1000)*evapVol)/weight)
 
 ### MDS
 
@@ -104,14 +120,13 @@ metaMDS(grad_conc_wide[2:14])
 
 ### Figure 
 
-ggplot(filter(grad_conc, Conc > 5), aes(x = Name, y = Conc, colour = species)) +
+ggplot(filter(final_concs, stand_conc > 250), aes(x = Name, y = stand_conc, colour = species)) +
   geom_point(size = 4) +
   theme_classic() +
   scale_colour_viridis(discrete = TRUE, end = 0.9) +
-  labs(x = "Fatty Acid", y = "Concentration (ng/ul)")
+  labs(x = "Fatty Acid", y = "Concentration (ng/mg)") +
+  theme(axis.text.x = element_text(angle = 270, vjust = 0.1))
   
-
-
 
 ####
 #<<<<<<<<<<<<<<<<<<<<<<<<<<END OF SCRIPT>>>>>>>>>>>>>>>>>>>>>>>>#
