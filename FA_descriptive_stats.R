@@ -61,6 +61,8 @@ Gradients19_FA_Concs <- read_csv("Data/Biomarkers/FattyAcids/Gradients19_FA_Conc
                                                  col_types = cols(Conc = col_double(), 
                                                  Date.anal = col_character(), Notes = col_character()))
 
+Whippo_FA_extraction_log <- read_csv("~/Dropbox/OSF/Fatty Acid Extractions/Whippo_FA_extraction_log.csv")
+
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # MANIPULATE DATA                                                              ####
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -82,6 +84,11 @@ grad_conc <- Gradients19_FA_Concs %>%
 
 grad_conc <- grad_conc %>% 
   drop_na(Conc)
+
+# Get original sample weights to standardize concentrations
+weight_ID <- Whippo_FA_extraction_log %>%
+  select(FAnumber, boatSampleWeight, boatAfterWeighing, projectID) %>%
+  filter(projectID %in% c("Gradients2019", "Gradients2019 - B sides"))
 
 # replace NAs with 0 in Conc
 grad_conc$Conc[is.na(grad_conc$Conc)] <- 0
