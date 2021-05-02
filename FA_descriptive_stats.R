@@ -108,6 +108,17 @@ conc_weight$evapVol <- as.numeric(conc_weight$evapVol)
 
 final_concs <- conc_weight %>%
   mutate(stand_conc = ((Conc*1000)*evapVol)/weight)
+summed_FA <- final_concs %>%
+  group_by(Sample) %>%
+  summarise(sum(stand_conc))
+final_concs <- final_concs %>%
+  left_join(summed_FA, by = "Sample")
+# rename column
+final_concs <- final_concs %>%
+  rename(summed_FA = "sum(stand_conc)")
+# calculate percent of each FA per total
+final_concs$FA_percent <- final_concs$stand_conc/final_concs$summed_FA
+
 
 ### MDS
 
@@ -120,12 +131,25 @@ metaMDS(grad_conc_wide[2:14])
 
 ### Figure 
 
+# dotplot of final concentration by species by FA
 ggplot(filter(final_concs, stand_conc > 250), aes(x = Name, y = stand_conc, colour = species)) +
   geom_point(size = 4) +
   theme_classic() +
   scale_colour_viridis(discrete = TRUE, end = 0.9) +
   labs(x = "Fatty Acid", y = "Concentration (ng/mg)") +
   theme(axis.text.x = element_text(angle = 270, vjust = 0.1))
+
+# stacked barplot of percent contribution of each FA to total FA
+ggplot(filter(final_concs, stand_conc > 250), aes(x = FA_percent, y = Sample, fill = Name)) +
+         geom_col(position = "stack") +
+         scale_fill_viridis(discrete = TRUE)
+
+# LIN, ALA, SDA, ARA, EPA
+ggplot(filter(final_concs, Name %in% c("c18.2n6c", "c18.3n3", "c18.4n3", "c20.4n6", "c20.5n3")), aes(x = Name, y = stand_conc, fill = Sample)) +
+         geom_col(position = "dodge") +
+         scale_fill_viridis(discrete = TRUE) +
+         scale_x_discrete(labels=c("c18.2n6c" = "LIN (c18.2n6c)", "c18.3n3" = "ALA (c18.3n3)",
+                            "c20.4n6" = "ARA (c20.4n6)", "c20.5n3" = "EPA (c20.5n3)"))
   
 
 ####
