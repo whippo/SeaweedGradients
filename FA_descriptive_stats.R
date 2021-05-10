@@ -71,8 +71,21 @@ Whippo_FA_extraction_log <- read_csv("~/Dropbox/OSF/Fatty Acid Extractions/Whipp
 
 # convert data to long form
 dummy_trans <- t(dummy_data)
-long_dummy <- dummy_trans %>%
-  pivot_longer(!X1, names_to = "")
+dummy_trans <- as.data.frame(t(dummy_data[,-1]))
+colnames(dummy_trans) <- dummy_data$X1
+dummy_trans <- as.numeric(dummy_trans)
+dummy_nums <- mutate_all(dummy_trans, function(x) as.numeric(as.character(x)))
+dummy_nums <- dummy_nums %>% 
+  mutate(
+    across(everything(), ~replace_na(.x, 0))
+  )
+
+
+
+#long_dummy <- dummy_trans %>%
+#  pivot_longer(names_to = "")
+
+
 
 ############### Actual data
 
@@ -121,6 +134,16 @@ final_concs$FA_percent <- final_concs$stand_conc/final_concs$summed_FA
 
 
 ### MDS
+
+# dummy data
+dummy_MDS <- metaMDS(dummy_nums[2:18])
+plot(dummy_MDS, type = "t")
+dummy_MDS_points <- dummy_MDS$points
+dummy_MDS_points <- data.frame(dummy_MDS_points)
+plot_data_dummy <- data.frame(dummy_MDS_points, dummy_nums[,1])
+ggplot(plot_data_dummy, aes(x=MDS1, y=MDS2)) +  
+  theme_minimal() +
+  geom_point(size = 4)
 
 # pivot data wide for mds
 grad_conc_wide <- grad_conc %>%
