@@ -57,9 +57,17 @@ library(viridis)
 
 dummy_data <- read_csv("Data/Biomarkers/FattyAcids/dummy_sample_values.csv")
 
+# Browser data
 Gradients19_FA_Concs <- read_csv("Data/Biomarkers/FattyAcids/Gradients19_FA_Concs.csv", 
                                                  col_types = cols(Conc = col_double(), 
                                                  Date.anal = col_character(), Notes = col_character()))
+
+# Insight Data
+Insight_concs <- read_csv("Data/Biomarkers/FattyAcids/Gradients_FA_Concs_Insight.csv", 
+                               col_types = cols(Area = col_number(), 
+                                                Conc = col_number(),
+                                                          Date_Insight_Anal = col_character(), 
+                                                          Number_ID = col_character()))
 
 Whippo_FA_extraction_log <- read_csv("~/Dropbox/OSF/Fatty Acid Extractions/Whippo_FA_extraction_log.csv")
 
@@ -87,9 +95,9 @@ dummy_nums <- dummy_nums %>%
 
 
 
-############### Actual data
+############### Actual data BROWSER
 
-# create species-genus ID column
+# create species-genus ID column (BROWSER)
 grad_conc <- Gradients19_FA_Concs %>%
   mutate(species = str_replace_all(Sample, c("HIGR_10F0836_0130_5252020_22" = "H. grandifolius",
                                             "MYMA_09F0778_0166_5252020_7" = "M. manginii",
@@ -132,6 +140,52 @@ final_concs <- final_concs %>%
 # calculate percent of each FA per total
 final_concs$FA_percent <- final_concs$stand_conc/final_concs$summed_FA
 
+############### Actual data INSIGHT
+
+
+# create species-genus ID column (INSIGHT)
+grad_conc_insight <- Insight_concs %>%
+  separate(Sample, into = c("speciesAbv", "sampleID", "FAnumber", "extractDate", "GCrunNumber"), sep = "_") %>%
+  mutate(species = str_replace_all(speciesAbv, c("HIGR" = "H. grandifolius",
+                                             "MYMA" = "M. manginii",
+                                             "LAAN" = "L. antarctica")))
+
+grad_conc_insight <- grad_conc_insight %>% 
+  drop_na(Conc)
+
+# replace NAs with 0 in Conc
+grad_conc_insight$Conc[is.na(grad_conc_insight$Conc)] <- 0
+
+
+# Get original sample weights to standardize concentrations
+weight_ID <- Whippo_FA_extraction_log %>%
+  select(FAnumber, boatSampleWeight, boatAfterWeighing, projectID, evapVol) %>%
+  filter(projectID %in% c("Gradients2019", "Gradients2019 - B sides"))
+
+weight_net <- weight_ID %>%
+  mutate(weight = boatSampleWeight - boatAfterWeighing)
+
+conc_weight_insight <- grad_conc_insight %>%
+  left_join(weight_net, by = "FAnumber")
+
+conc_weight_insight$evapVol <- recode(conc_weight_insight$evapVol, "nd" = "1.5")
+conc_weight_insight$evapVol <- as.numeric(conc_weight_insight$evapVol)
+
+final_concs_insight <- conc_weight_insight %>%
+  mutate(stand_conc = ((Conc*1000)*evapVol)/weight)
+summed_FA <- final_concs_insight %>%
+  group_by(FAnumber) %>%
+  summarise(sum(stand_conc))
+final_concs_insight <- final_concs_insight %>%
+  left_join(summed_FA, by = "FAnumber")
+# rename column
+final_concs_insight <- final_concs_insight %>%
+  rename(summed_FA = "sum(stand_conc)")
+# calculate percent of each FA per total
+final_concs_insight$FA_proportion <- final_concs_insight$stand_conc/final_concs_insight$summed_FA
+
+
+
 
 ### MDS
 
@@ -152,7 +206,7 @@ grad_conc_wide <- grad_conc %>%
 
 metaMDS(grad_conc_wide[2:14])
 
-### Figure 
+### Figure  BROWSER
 
 # dotplot of final concentration by species by FA
 ggplot(filter(final_concs, stand_conc > 250), aes(x = Name, y = stand_conc, colour = species)) +
@@ -163,7 +217,7 @@ ggplot(filter(final_concs, stand_conc > 250), aes(x = Name, y = stand_conc, colo
   theme(axis.text.x = element_text(angle = 270, vjust = 0.1))
 
 # stacked barplot of percent contribution of each FA to total FA (dominant)
-ggplot(filter(final_concs, stand_conc > 250 & Name != 'c19.0'), aes(x = FA_percent, y = species, fill = Name)) +
+ggplot(filter(final_concs, stand_conc > 250 & Name != 'c19.0'), aes(x = FA_proportion, y = species, fill = Name)) +
   geom_col(position = "stack") +
   scale_fill_viridis(discrete = TRUE) +
   theme_classic() +
@@ -197,7 +251,65 @@ ggplot(filter(final_concs, Name %in% c("c18.2n6c", "c18.3n3", "c18.4n3", "c20.4n
   labs(fill = "Species") +
   xlab("Fatty Acid") +
   ylab("Standardized Concentration (ng/ul)")
+
+
+### Figure  INSIGHT
+
+# dotplot of final concentration by species by FA
+ggplot(filter(final_concs_insight, stand_conc > 250), aes(x = Name, y = stand_conc, colour = species)) +
+  geom_point(size = 4) +
+  theme_classic() +
+  scale_colour_viridis(discrete = TRUE, end = 0.9) +
+  labs(x = "Fatty Acid", y = "Concentration (ng/mg)") +
+  theme(axis.text.x = element_text(angle = 270, vjust = 0.1))
+
+# boxplot of final concentration by species by FA
+ggplot(filter(final_concs_insight, stand_conc > 250), aes(x = Name, y = stand_conc, colour = species)) +
+  geom_boxplot() +
+  theme_classic() +
+  scale_colour_viridis(discrete = TRUE, end = 0.9) +
+  labs(x = "Fatty Acid", y = "Concentration (ng/mg)") +
+  theme(axis.text.x = element_text(angle = 270, vjust = 0.1))
+
+# stacked barplot of percent contribution of each FA to total FA (dominant)
+ggplot(filter(final_concs_insight, stand_conc > 250 & Name != 'c19.0'), aes(x = FA_proportion, y = sampleID, fill = Name, group = as.factor(species))) +
+  geom_col(position = "stack") +
+  scale_fill_viridis(discrete = TRUE) +
+  theme_classic() +
+  labs(fill = "Fatty Acid") +
+  xlab("Proportion of Total FA Content") +
+  ylab("Samples") +
+  facet_wrap(~ species)
+
+# stacked barplot of percent contribution of each FA to total FA (minimal)
+ggplot(filter(final_concs_insight, stand_conc > 25 & stand_conc < 250 & Name != 'c19.0'), aes(x = FA_percent, y = species, fill = Name)) +
+  geom_col(position = "stack") +
+  scale_fill_viridis(discrete = TRUE) +
+  labs(fill = "Fatty Acid") +
+  xlab("Proportion of Total FA Content") +
+  ylab("Species")
+
+# stacked barplot of percent contribution of each FA to total FA (trace)
+ggplot(filter(final_concs_insight, stand_conc < 25 & Name != 'c19.0'), aes(x = FA_percent, y = species, fill = Name)) +
+  geom_col(position = "stack") +
+  scale_fill_viridis(discrete = TRUE) +
+  labs(fill = "Fatty Acid") +
+  xlab("Proportion of Total FA Content") +
+  ylab("Species")
+
+# LIN, ALA, SDA, ARA, EPA
+ggplot(filter(final_concs_insight, Name %in% c("c18.2n6c", "c18.3n3", "c18.4n3", "c20.4n6", "c20.5n3")), aes(x = Name, y = stand_conc, fill = species)) +
+  geom_boxplot(position = "dodge") +
+  theme_classic() +
+  scale_fill_viridis(discrete = TRUE) +
+  scale_x_discrete(labels=c("c18.2n6c" = "LIN (c18.2n6c)", "c18.3n3" = "ALA (c18.3n3)",
+                            "c20.4n6" = "ARA (c20.4n6)", "c20.5n3" = "EPA (c20.5n3)")) +
+  labs(fill = "Species") +
+  xlab("Fatty Acid") +
+  ylab("Standardized Concentration (ng/ul)")
+
   
+
 
   ####
 #<<<<<<<<<<<<<<<<<<<<<<<<<<END OF SCRIPT>>>>>>>>>>>>>>>>>>>>>>>>#
