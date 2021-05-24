@@ -4,7 +4,7 @@
 # Data are current as of 2021-04-26                                              ##
 # Data source: Antarctic Gradients 2019                                          ##
 # R code prepared by Ross Whippo                                                 ##
-# Last updated 2021-04-26                                                        ##
+# Last updated 2021-05-14                                                        ##
 #                                                                                ##
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -16,6 +16,9 @@
 
 # Required Files (check that script is loading latest version):
 # dummy_sample_values.csv
+# Gradients19_FA_Concs.csv
+# Gradients_FA_Concs_Insight.csv
+# Whippo_FA_extraction_log.csv
 
 
 # Associated Scripts:
@@ -38,6 +41,7 @@
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 # 2021-04-26 Script created
+# 2021-05-14 Updated metadata, import and treatment of Insight data
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # LOAD PACKAGES                                                                ####
@@ -68,6 +72,8 @@ Insight_concs <- read_csv("Data/Biomarkers/FattyAcids/Gradients_FA_Concs_Insight
                                                 Conc = col_number(),
                                                           Date_Insight_Anal = col_character(), 
                                                           Number_ID = col_character()))
+Insight_concs <- Insight_concs %>%
+  mutate(across(where(is.character), ~na_if(., "----")))
 
 Whippo_FA_extraction_log <- read_csv("~/Dropbox/OSF/Fatty Acid Extractions/Whippo_FA_extraction_log.csv")
 
@@ -139,6 +145,10 @@ final_concs <- final_concs %>%
   rename(summed_FA = "sum(stand_conc)")
 # calculate percent of each FA per total
 final_concs$FA_percent <- final_concs$stand_conc/final_concs$summed_FA
+
+
+
+
 
 ############### Actual data INSIGHT
 
