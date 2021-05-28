@@ -1,0 +1,236 @@
+---
+title: "Antarctica Seaweed Gradients"
+subtitle: "Fatty Acid Analysis Notes"
+author: "Ross Whippo"
+date: 'Created: 2021-05-28  ; (Updated: `r Sys.Date()`)'
+output:
+  html_document:
+    code_folding: hide
+    df_print: kable
+    fig_caption: yes
+    highlight: tango
+    number_sections: yes
+    theme: cosmo
+    toc: yes
+    toc_depth: 4
+    toc_float: true
+  pdf_document:
+    toc: yes
+    toc_depth: '4'
+  word_document:
+    toc: yes
+    toc_depth: '4'
+
+---
+
+
+
+<style>
+.column-left{
+  float: left;
+  width:48%;
+  text-align: left;
+}
+
+
+.column-right{
+  float: right;
+  width: 48%;
+  text-align: left;
+}
+
+.column-All{
+  float: left;
+  width:100%;
+  text-align: left;
+}
+</style>
+
+
+
+
+```{r setup, include=FALSE}
+
+## Start with tidyverse library, and some default chunk options
+
+knitr::opts_chunk$set(echo = TRUE,
+                      warning = FALSE,
+                      message = FALSE,
+                      fig.align = 'center')
+
+
+## use the following to manually set the working directory of RMarkdown documents. Note that this needs to be defined in this 'setup' r code chunk and will not work if placed elsewhere
+
+# knitr::opts_knit$set(root.dir = '//60451-desktop/MRGIS/Biology/2021 Synthesis/Site_Summaries')
+
+```
+
+
+
+<!-- 
+
+TODO: 
+
+NOTES: 
+NOTES UP TO 2021-05-19 TRANSFERRED TO GIT/OSF from notepad document through R MARKDOWN DOCUMENT ON 2021-05-28
+
+-->
+
+# GC Notes
+
+## General GC
+
+### 2021-04-28
+
+Tips on GC runs:
+
+-Can do up to 50 samples in one batch! <- do this! only one method file for all of them! (just fill up rinse between runs, and septa on vials during middle of a run)
+-Run standards at beginning of run, and Std3 at end of run (be sure to replace septa after first run
+-Run long burn hexane at beginning and end of run
+
+## BATCH 13/14 GC
+
+### 2021-05-13
+
+Reran batch 13 as batch 14 with minor adustments (see batch file)
+
+To create new batch file without crashing, open most recent batchfile in post run, save in new batch folder with new name, edit as much as possible. Save. Then open in realtime to make rest of the changes (tuning file, vial number)
+
+standard = 3/25/19 julie
+
+## BATCH 15 GC
+
+### 2021-05-13
+
+batch15 begun. standard = 3/25/19 julie
+
+### 2021-05-15
+
+capped vials 6-15 under N2 and put in freezer ~1400
+
+### 2021-05-16
+
+put remaining samples under N2 ~1100
+
+
+# FA Processing Notes
+
+## General Processing Notes
+
+### 2021-04-28
+
+Shimadzu Software FA Analysis
+-must maintain data directory structure
+
+1. retention times (Postrun)
+	+open batch in Data Compare tab
+	+drag and drop a standard and representative sample to view
+	+go from beginning to end making list of peaks and retention times
+
+2. standard curve (Postrun)
+	+open batch in Calibration Curve tab
+	+open FAME long burn method
+	_drag and drop standards into data file 'level' window (level 1 = 15ng, level 2 = 50ng, etc)
+	+in Param's tab, edit times with recorded values, add any additional peaks at bottom (ref ions of new FAs from Jessie's spreadsheet, empty Conc fields)
+	+starting at top of Param's list, click "Multi" tab on integration window, go through each and make sure:
+	  	+all four boxes checked
+		  +integration looks correct (manually integrate if not, horizontal)
+		  +R > 0.99
+		  +remove peaks not in standard (Param's, edit, remove Concs, set retention time to 6)
+		  +SAVE method file
+		
+3. RF settings (Postrun)
+	+with saved method file, open Process<Manual RF Setting
+	+use RF Setting spreadsheet to set all 0s to correct FA in MY SAMPLE, not the spreadsheet value (i.e. - figure out which FA the other FA is getting it's value from, and then within the method file assign the same number I see in the Manual RF Setting window)
+	+SAVE method file (DONE!)
+	
+4. Quantifying concs in samples (Browser)
+	+drag and drop sample into browser window
+	+in Param's tab, edit to add correct units to all FAs
+	+in Results tab, go down through list, rectify sample with method results
+	+manually integrate as needed, use Postrun to do comparison of sample w/ starndard if needed to confirm ID
+	+check for good integration, retention time is correct, in Quant Browser Tab Act % ~ Set % for each ion.
+	+delete results for improperly ID'd peaks
+	+SAVE data file (not browsing file)
+	+copy/paste from Results tab Name:Unit into master spreadsheet for FA concs			
+		
+
+## Batch Notes
+
+### BATCH 8 Processing
+
+#### 2021-04-28
+
+Standard Peaks coaluding: 22:3n6 (42.630 min) and 22:5n6 (43.500 min), still got R>.99 but barely, selected from hump of peaks.
+
+Batch 8 method file calibration curves complete and saved.
+
+HIGR_10F0936_013-_5252020_22.qdg 
+tentative IDs
+18.5 min 16:1n1 ions: 55, 268, 80
+28.7 min 18:4n1 ions: 79, 290, 80
+
+MYMA_09F0778_0166_5252020_7.qdg
+LAAN_14F1207_0194_5252020_14.qdg
+
+USED BROWSER FOR THESE SAMPLES
+
+#### 2021-05-12
+
+STARTED USING INSIGHT
+
+ANy 22:3n6 and 22:5n6 can't be resolved in samples (esp. LAAN)
+
+LAAN_14F1207_0194 Insight tried to ID as c17.1n9c is really c16:3n3 -> RT = 20.859 ions =  79, 264, 108 AREA = 913613 ManualRF = c18:3n6 (batch 8 = 149387)
+
+1. Open InsightGCMS
+2. Open standard 3
+3. import algal spectra
+4. Use compound vs sample view to go species by species. 
+
+### BATCH 14 Processing
+
+#### 2021-05-17
+
+Began analysis on batch 14, trying to get my workflow down. Right now I think I should:
+
+ID RT for all peaks in std3 and one of each species in a batch;
+ID RT for all std3 peaks in other batches using previous std3 from first analysis;
+After I feel confident in all my std3 peak IDs, then go through one of each species per batch;
+then run all batches
+
+#### 2021-05-19
+
+made batch table in OSF interpretation folder to paste in observed retention times for batch 14
+
+for FA not in standard, just make sure nothing is selected for peaks in calibration
+ 
+thought I saw 16:4, but Jessie said not likely (not right RT)
+
+# FA Statistical Analysis Notes
+
+
+
+
+
+```{r, echo = FALSE}
+
+## Load Libraries
+
+
+```
+
+
+
+```{r}
+# Import all data and manage for analyses/visualizations
+
+
+
+
+```
+
+
+
+
+<!-- end of document -->

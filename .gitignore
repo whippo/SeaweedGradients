@@ -3,6 +3,7 @@
 .RData
 .Ruserdata
 *.pdf
+*.html
 Images
 *.log
 GradientsBiomarkerSample_files
