@@ -65,7 +65,35 @@ knitr::opts_chunk$set(echo = TRUE,
 
 ```
 
+```{r, echo = FALSE}
 
+## Load Libraries
+
+library(tidyverse)
+library(gt)
+library(viridis)
+library(ggmap)
+library(algaeClassify)
+library(vistime)
+library(plotly)
+library(rmarkdown)
+library(DT)
+
+
+theme_set(theme_classic())
+
+```
+
+```{r}
+# Import all data and manage for analyses/visualizations
+
+# load batch times for hand-ID'd FAs into table
+batch_times <- read_csv("Data/Biomarkers/FattyAcids/Gradient_RT_batches.csv", 
+    col_types = cols(runDate = col_character(), 
+        dateIdentified = col_character()))
+
+
+```
 
 <!-- 
 
@@ -206,6 +234,27 @@ made batch table in OSF interpretation folder to paste in observed retention tim
 for FA not in standard, just make sure nothing is selected for peaks in calibration
  
 thought I saw 16:4, but Jessie said not likely (not right RT)
+
+#### 2021-06-03
+
+Continued identifying FA in batch 14 from std3 ID'd peaks (still on SAFAs)
+
+Peak ID'd as 10:0 in samples did not have right ions (71, 57), deleted 10:0 results for all algae this batch
+
+
+
+Table 1: Batch RT times extracted manual from standard and representative samples per batch.   
+```{r}
+
+datatable(batch_times, 
+         extensions = c('FixedColumns',"FixedHeader"),
+          options = list(scrollX = TRUE, 
+                         paging=TRUE,
+                         fixedHeader=TRUE))
+
+```
+
+
 
 # FA Statistical Analysis Notes
 
