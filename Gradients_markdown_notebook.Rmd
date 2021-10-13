@@ -257,10 +257,12 @@ datatable(batch_times,
 #### 2021-10-13
 
 Tring to determine where I am in the process. Have three files of interest:
+
 + Gradients19_FA_Concs.csv (2021-04-28, used Browser)
   + HIGR_10F0836_0130_5252020_22 (batch 8)
   + MYMA_09F0778_0166_5252020_7 (batch 8)
   + LAAN_14F1207_0194_5252020_14 (batch 8)
+
 + Gradients_FA_Concs_Insight.csv (2021-05-12, 6 of 18 samples put through insight below)
   + HIGR_10F0836_0130_5252020_22 (batch 8, rerun with Insight)
   + LAAN_14F1207_0194_5252020_14 (batch 8, rerun with Insight)
@@ -268,6 +270,7 @@ Tring to determine where I am in the process. Have three files of interest:
   + HIGR_12F1103_0139_5252020_21 (batch 8)
   + MYMA_10F0841_0167_5252020_18 (batch 8)
   + MYMA_14F1307_0175_5252020_27 (batch 8)
+
 + Gradient_RT_batches.csv (2021-05-19, ID'd retention times of following samples, appear to have finished ASMI, but none of the others)
   + batch 14 (9 samples)
     + longburn1_hexane
@@ -276,6 +279,11 @@ Tring to determine where I am in the process. Have three files of interest:
     + DEAP_12F1144_0266
     + DEAN_11F1052_0228
     + CORA_12F1201_0270
+    
+Going forward - using Jessie's excel workbook, starting with DEAP and DEAN as they have the most peaks.
+Left off checking RT for DEAN against std1 & 2 on Workup excel sheet (Rel Ret Time Tab)
+
+I'm just gonna do what's left of this batch and check to see if the ASMI is worth rechecking, or cut/pasting as-is into excel
 
 
 # FA Statistical Analysis Notes
