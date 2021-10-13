@@ -291,7 +291,7 @@ ggplot(filter(final_concs_insight, stand_conc > 250 & Name != 'c19.0'), aes(x = 
   ylab("Samples") +
   facet_wrap(~ species)
 
-# stacked barplot of percent contribution of each FA to total FA (minimal)
+  # stacked barplot of percent contribution of each FA to total FA (minimal)
 ggplot(filter(final_concs_insight, stand_conc > 25 & stand_conc < 250 & Name != 'c19.0'), aes(x = FA_percent, y = species, fill = Name)) +
   geom_col(position = "stack") +
   scale_fill_viridis(discrete = TRUE) +
