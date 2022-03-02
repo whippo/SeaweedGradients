@@ -285,6 +285,10 @@ Left off checking RT for DEAN against std1 & 2 on Workup excel sheet (Rel Ret Ti
 
 I'm just gonna do what's left of this batch and check to see if the ASMI is worth rechecking, or cut/pasting as-is into excel
 
+#### 2022-02-01
+
+Getting going on analysis again, using Browser and Shimadzu software as Insight proved to be not totally worth it. 
+
 
 # FA Statistical Analysis Notes
 

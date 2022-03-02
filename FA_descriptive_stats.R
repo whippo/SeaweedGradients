@@ -1,10 +1,10 @@
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #                                                                                ##
 # Antarctica Algae Descriptive Stats                                             ##
-# Data are current as of 2021-04-26                                              ##
+# Data are current as of 2022-02-08                                              ##
 # Data source: Antarctic Gradients 2019                                          ##
 # R code prepared by Ross Whippo                                                 ##
-# Last updated 2021-05-14                                                        ##
+# Last updated 2021-04-08                                                        ##
 #                                                                                ##
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -42,6 +42,8 @@
 
 # 2021-04-26 Script created
 # 2021-05-14 Updated metadata, import and treatment of Insight data
+# 2022-02-08 Basically abandoning all previous work. Starting from scratch using
+#             Browser instead of Insight. Started w/ batch 1
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # LOAD PACKAGES                                                                ####
@@ -59,23 +61,32 @@ library(viridis)
 # READ IN AND PREPARE DATA                                                     ####
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-dummy_data <- read_csv("Data/Biomarkers/FattyAcids/dummy_sample_values.csv")
+# dummy_data <- read_csv("Data/Biomarkers/FattyAcids/dummy_sample_values.csv")
 
-# Browser data
-Gradients19_FA_Concs <- read_csv("Data/Biomarkers/FattyAcids/Gradients19_FA_Concs.csv", 
-                                                 col_types = cols(Conc = col_double(), 
-                                                 Date.anal = col_character(), Notes = col_character()))
+# OLD Browser data
+# Gradients19_FA_Concs <- read_csv("Data/Biomarkers/FattyAcids/Gradients19_FA_Concs.csv", 
+#                                                  col_types = cols(Conc = col_double(), 
+#                                                  Date.anal = col_character(), Notes = col_character()))
 
 # Insight Data
-Insight_concs <- read_csv("Data/Biomarkers/FattyAcids/Gradients_FA_Concs_Insight.csv", 
-                               col_types = cols(Area = col_number(), 
-                                                Conc = col_number(),
-                                                          Date_Insight_Anal = col_character(), 
-                                                          Number_ID = col_character()))
-Insight_concs <- Insight_concs %>%
-  mutate(across(where(is.character), ~na_if(., "----")))
+# Insight_concs <- read_csv("Data/Biomarkers/FattyAcids/Gradients_FA_Concs_Insight.csv", 
+#                                col_types = cols(Area = col_number(), 
+#                                                Conc = col_number(),
+#                                                          Date_Insight_Anal = col_character(), 
+#                                                          Number_ID = col_character()))
+# Insight_concs <- Insight_concs %>%
+#   mutate(across(where(is.character), ~na_if(., "----")))
 
+# Need to be connected to Dropbox to access
 Whippo_FA_extraction_log <- read_csv("~/Dropbox/OSF/Fatty Acid Extractions/Whippo_FA_extraction_log.csv")
+
+# batch 1 import
+batch1 <- read_csv("Data/Biomarkers/FattyAcids/batch1_gradients19_rawquants.csv")
+  
+batch1$Conc <- batch1$Conc %>%
+  replace("-----", 0)
+  mutate(Conc_num = case_when(Conc == "-----" ~ "0")) 
+  select(c('Data Filename', 'FA', 'Ret Time', 'Conc'))
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # MANIPULATE DATA                                                              ####
