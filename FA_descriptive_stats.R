@@ -88,6 +88,7 @@ batch1$Conc <- batch1$Conc %>%
   
 all_batch <- read_csv("Data/Biomarkers/FattyAcids/core_spp_final_concs.csv")
 
+
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # MANIPULATE DATA                                                              ####
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -124,10 +125,33 @@ grad_conc <- all_batch %>%
 
 
 
+# DEME only for gradient analysis
+
+deme <- grad_conc %>%
+  filter(species == "D. menziesii") %>%
+  mutate(site = str_sub(sample, 6, 7))
 
 
+site <- c('02', '03', '04', '05', '07', '08', '09', '10', '11', '12', '13', '14', '15')
+lat <- c(-67.5567, -68.1758, -68.6921, -67.5488, -66.0894, -65.5131, -65.1043, -64.9002, -64.7932, -64.7720, -66.0251, -64.7793, -65.2402)
 
+site_lat <- data.frame(site, lat)
 
+deme_site <- left_join(deme, site_lat, by = "site")
+deme_site$lat <- as.factor(deme_site$lat)
+
+ggplot(filter(deme_site, proportion > 0.1 & FA !="19:0"), aes(x = lat, y = proportion, colour = FA)) +
+  geom_point() +
+  geom_point(size = 4) +
+  theme_classic() +
+  scale_colour_viridis(discrete = TRUE, end = 0.9) +
+  labs(x = "Latitude", y = "Proportion of Total Fatty Acids") +
+  geom_line(data = deme_site %>%
+              filter(proportion > 0.1 & FA !="19:0") %>%
+              group_by(lat, FA) %>%
+              summarise("mean proportion" = mean(proportion)), 
+            aes(x = lat, y = `mean proportion`, group = FA, colour = FA), lwd = 1) +
+  coord_flip()
 
 
 
