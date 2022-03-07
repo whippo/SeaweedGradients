@@ -4,7 +4,7 @@
 # Data are current as of 2022-02-08                                              ##
 # Data source: Antarctic Gradients 2019                                          ##
 # R code prepared by Ross Whippo                                                 ##
-# Last updated 2021-04-08                                                        ##
+# Last updated 2022-03-07                                                        ##
 #                                                                                ##
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -44,16 +44,13 @@
 # 2021-05-14 Updated metadata, import and treatment of Insight data
 # 2022-02-08 Basically abandoning all previous work. Starting from scratch using
 #             Browser instead of Insight. Started w/ batch 1
+# 2022-03-07 Finished batch 1 and 2, used code to create basic summary stats
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # LOAD PACKAGES                                                                ####
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-library(dplyr)
-library(readr)
-library(ggplot2)
-library(tidyr)
-library(stringr)
+library(tidyverse)
 library(vegan)
 library(viridis)
 
@@ -78,15 +75,18 @@ library(viridis)
 #   mutate(across(where(is.character), ~na_if(., "----")))
 
 # Need to be connected to Dropbox to access
-Whippo_FA_extraction_log <- read_csv("~/Dropbox/OSF/Fatty Acid Extractions/Whippo_FA_extraction_log.csv")
+Whippo_FA_extraction_log <- read_csv("~/Dropbox/OSF/Fatty Acid Extractions/Whippo_FA_extraction_log.csv") #linux
+Whippo_FA_extraction_log <- read_csv("C:/Users/rossw/Dropbox/OSF/Fatty Acid Extractions/Whippo_FA_extraction_log.csv") #windows
 
 # batch 1 import
-batch1 <- read_csv("Data/Biomarkers/FattyAcids/batch1_gradients19_rawquants.csv")
+# batch1 <- read_csv("Data/Biomarkers/FattyAcids/batch1_gradients19_rawquants.csv")
   
 batch1$Conc <- batch1$Conc %>%
   replace("-----", 0)
   mutate(Conc_num = case_when(Conc == "-----" ~ "0")) 
   select(c('Data Filename', 'FA', 'Ret Time', 'Conc'))
+  
+all_batch <- read_csv("Data/Biomarkers/FattyAcids/core_spp_final_concs.csv")
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # MANIPULATE DATA                                                              ####
@@ -95,15 +95,15 @@ batch1$Conc <- batch1$Conc %>%
 ############### Dummy Data
 
 # convert data to long form
-dummy_trans <- t(dummy_data)
-dummy_trans <- as.data.frame(t(dummy_data[,-1]))
-colnames(dummy_trans) <- dummy_data$X1
-dummy_trans <- as.numeric(dummy_trans)
-dummy_nums <- mutate_all(dummy_trans, function(x) as.numeric(as.character(x)))
-dummy_nums <- dummy_nums %>% 
-  mutate(
-    across(everything(), ~replace_na(.x, 0))
-  )
+# dummy_trans <- t(dummy_data)
+# dummy_trans <- as.data.frame(t(dummy_data[,-1]))
+# colnames(dummy_trans) <- dummy_data$X1
+# dummy_trans <- as.numeric(dummy_trans)
+# dummy_nums <- mutate_all(dummy_trans, function(x) as.numeric(as.character(x)))
+# dummy_nums <- dummy_nums %>% 
+#  mutate(
+#    across(everything(), ~replace_na(.x, 0))
+#  )
 
 
 
@@ -115,147 +115,97 @@ dummy_nums <- dummy_nums %>%
 ############### Actual data BROWSER
 
 # create species-genus ID column (BROWSER)
-grad_conc <- Gradients19_FA_Concs %>%
-  mutate(species = str_replace_all(Sample, c("HIGR_10F0836_0130_5252020_22" = "H. grandifolius",
-                                            "MYMA_09F0778_0166_5252020_7" = "M. manginii",
-                                            "LAAN_14F1207_0194_5252020_14" = "L. antarctica")))
-
-grad_conc <- grad_conc %>% 
-  drop_na(Conc)
-
-# replace NAs with 0 in Conc
-grad_conc$Conc[is.na(grad_conc$Conc)] <- 0
-
-# extract FAnumber from sample name to join with weights
-grad_conc <- grad_conc %>%
-  mutate(FAnumber = substr(Sample, 14, 17))
-
-# Get original sample weights to standardize concentrations
-weight_ID <- Whippo_FA_extraction_log %>%
-  select(FAnumber, boatSampleWeight, boatAfterWeighing, projectID, evapVol) %>%
-  filter(projectID %in% c("Gradients2019", "Gradients2019 - B sides"))
-
-weight_net <- weight_ID %>%
-  mutate(weight = boatSampleWeight - boatAfterWeighing)
-
-conc_weight <- grad_conc %>%
-  left_join(weight_net, by = "FAnumber")
-
-conc_weight$evapVol <- recode(conc_weight$evapVol, "nd" = "1.5")
-conc_weight$evapVol <- as.numeric(conc_weight$evapVol)
-
-final_concs <- conc_weight %>%
-  mutate(stand_conc = ((Conc*1000)*evapVol)/weight)
-summed_FA <- final_concs %>%
-  group_by(Sample) %>%
-  summarise(sum(stand_conc))
-final_concs <- final_concs %>%
-  left_join(summed_FA, by = "Sample")
-# rename column
-final_concs <- final_concs %>%
-  rename(summed_FA = "sum(stand_conc)")
-# calculate percent of each FA per total
-final_concs$FA_percent <- final_concs$stand_conc/final_concs$summed_FA
+grad_conc <- all_batch %>%
+  mutate(species = case_when(startsWith(sample, "HIGR") ~ "H. grandifolius",
+                             startsWith(sample, "DEME") ~ "D. menziesii",
+                             startsWith(sample, "IRCO") ~ "I. cordata",
+                             startsWith(sample, "PHAN") ~ "P. antarctica",
+                             startsWith(sample, "PLCA") ~ "P. cartilagineum"))
 
 
 
 
 
-############### Actual data INSIGHT
-
-
-# create species-genus ID column (INSIGHT)
-grad_conc_insight <- Insight_concs %>%
-  separate(Sample, into = c("speciesAbv", "sampleID", "FAnumber", "extractDate", "GCrunNumber"), sep = "_") %>%
-  mutate(species = str_replace_all(speciesAbv, c("HIGR" = "H. grandifolius",
-                                             "MYMA" = "M. manginii",
-                                             "LAAN" = "L. antarctica")))
-
-grad_conc_insight <- grad_conc_insight %>% 
-  drop_na(Conc)
-
-# replace NAs with 0 in Conc
-grad_conc_insight$Conc[is.na(grad_conc_insight$Conc)] <- 0
-
-
-# Get original sample weights to standardize concentrations
-weight_ID <- Whippo_FA_extraction_log %>%
-  select(FAnumber, boatSampleWeight, boatAfterWeighing, projectID, evapVol) %>%
-  filter(projectID %in% c("Gradients2019", "Gradients2019 - B sides"))
-
-weight_net <- weight_ID %>%
-  mutate(weight = boatSampleWeight - boatAfterWeighing)
-
-conc_weight_insight <- grad_conc_insight %>%
-  left_join(weight_net, by = "FAnumber")
-
-conc_weight_insight$evapVol <- recode(conc_weight_insight$evapVol, "nd" = "1.5")
-conc_weight_insight$evapVol <- as.numeric(conc_weight_insight$evapVol)
-
-final_concs_insight <- conc_weight_insight %>%
-  mutate(stand_conc = ((Conc*1000)*evapVol)/weight)
-summed_FA <- final_concs_insight %>%
-  group_by(FAnumber) %>%
-  summarise(sum(stand_conc))
-final_concs_insight <- final_concs_insight %>%
-  left_join(summed_FA, by = "FAnumber")
-# rename column
-final_concs_insight <- final_concs_insight %>%
-  rename(summed_FA = "sum(stand_conc)")
-# calculate percent of each FA per total
-final_concs_insight$FA_proportion <- final_concs_insight$stand_conc/final_concs_insight$summed_FA
 
 
 
 
-### MDS
 
-# dummy data
-dummy_MDS <- metaMDS(dummy_nums[2:18])
-plot(dummy_MDS, type = "t")
-dummy_MDS_points <- dummy_MDS$points
-dummy_MDS_points <- data.frame(dummy_MDS_points)
-plot_data_dummy <- data.frame(dummy_MDS_points, dummy_nums[,1])
-ggplot(plot_data_dummy, aes(x=MDS1, y=MDS2)) +  
-  theme_minimal() +
-  geom_point(size = 4)
+### Figure  BROWSER (NEW 2022-03-07)
+
+# MDS
 
 # pivot data wide for mds
 grad_conc_wide <- grad_conc %>%
-  select(Name, Conc, species) %>%
-  pivot_wider(names_from = Name, values_from = Conc, values_fill = 0)
+  select(FA, species, proportion, sample) %>%
+  pivot_wider(names_from = FA, values_from = proportion, values_fill = 0)
 
-metaMDS(grad_conc_wide[2:14])
+# select EPA, ARA, SDA, PAL, OLE, and dominant sats (16, 18)
+sub_wide <- grad_conc_wide %>%
+  select(species, sample, "16:0", "16:1w7c", "18:0", "18:1w9c", "18:4w3c", "20:4w6", "20:5w3")
+sub_wide_trans <- (1+sub_wide[,3:9])
+sub_wide_trans <- bind_cols(sub_wide[1:2], sub_wide_trans)
 
-### Figure  BROWSER
+batch_1_2_MDS <- metaMDS(sub_wide_trans[3:9])
+batch_1_2_MDS_points <- batch_1_2_MDS$points
+batch_1_2_MDS_points <- data.frame(batch_1_2_MDS_points)
+plot_data_batch_1_2 <- data.frame(batch_1_2_MDS_points, sub_wide[,1])
+
+library(plyr)
+# create the list of points that will connect the 'hulls' together from your nMDS point data
+chulls_tax <- ddply(plot_data_batch_1_2, .(species), function(df) df[chull(df$MDS1, df$MDS2), ])
+# DETACH PLYR so it won't mess with anything!
+detach(package:plyr)
+
+ggplot(plot_data_batch_1_2, aes(x=MDS1, y=MDS2, color = species)) +
+  theme_classic() + # optional, I just like this theme
+  geom_point(size = 4) + # set size of points to whatever you want
+  geom_polygon(data=chulls_tax, aes(x=MDS1, y=MDS2, group=species), fill=NA) + # optional 'hulls' around points
+  scale_color_viridis(discrete = TRUE, end = 0.9) # my favorite color-blind and b&w friendly palette, look at the viridis package for more details
+
 
 # dotplot of final concentration by species by FA
-ggplot(filter(final_concs, stand_conc > 250), aes(x = Name, y = stand_conc, colour = species)) +
+ggplot(filter(grad_conc, proportion > 0.1 & FA !="19:0"), aes(x = FA, y = proportion, colour = species)) +
+  geom_boxplot(data = grad_conc %>% 
+                 filter(proportion > 0.1 & FA !="19:0"), 
+               aes(group = FA, y = proportion), color = "black", alpha = 0, show.legend = FALSE) +
   geom_point(size = 4) +
   theme_classic() +
   scale_colour_viridis(discrete = TRUE, end = 0.9) +
-  labs(x = "Fatty Acid", y = "Concentration (ng/mg)") +
-  theme(axis.text.x = element_text(angle = 270, vjust = 0.1))
+  labs(x = "Fatty Acid", y = "Proportion of Total Fatty Acids") +
+  scale_x_discrete(labels = c("16:0" = "PAL (16:0)", 
+                            "16:1w7c" = "PALO (16:1w7c)", 
+                            "18:0" = "STE (18:0)",
+                            "18:4w3c" = "SDA (18:4w3c)",
+                            "18:1w9c" = "OLE (18:1w9c)", 
+                            "20:4w6" = "ARA (20:4w6)", 
+                            "20:5w3" = "EPA (20:5w3)")) +
+  coord_flip()
 
 # stacked barplot of percent contribution of each FA to total FA (dominant)
-ggplot(filter(final_concs, stand_conc > 250 & Name != 'c19.0'), aes(x = FA_proportion, y = species, fill = Name)) +
+ggplot(filter(grad_conc, proportion > 0.1 & FA != '19:0') %>%
+         group_by(species, FA) %>%
+         summarise(proportion = mean(proportion)) %>%
+         ungroup() %>%
+         mutate(species = fct_reorder(species, proportion, sum, .desc = TRUE)), aes(x = proportion, y = species, fill = FA)) +
   geom_col(position = "stack") +
-  scale_fill_viridis(discrete = TRUE) +
+  scale_fill_viridis(discrete = TRUE, option = "C") +
   theme_classic() +
   labs(fill = "Fatty Acid") +
-  xlab("Proportion of Total FA Content") +
+  xlab("Mean Proportion of Total Fatty Acids") +
   ylab("Species")
 
-# stacked barplot of percent contribution of each FA to total FA (minimal)
-ggplot(filter(final_concs, stand_conc > 25 & stand_conc < 250 & Name != 'c19.0'), aes(x = FA_percent, y = species, fill = Name)) +
-  geom_col(position = "stack") +
-  scale_fill_viridis(discrete = TRUE) +
-  labs(fill = "Fatty Acid") +
-  xlab("Proportion of Total FA Content") +
-  ylab("Species")
+
+
+
+
+
+
+
 
 # stacked barplot of percent contribution of each FA to total FA (trace)
-ggplot(filter(final_concs, stand_conc < 25 & Name != 'c19.0'), aes(x = FA_percent, y = species, fill = Name)) +
+ggplot(filter(grad_conc, proportion > 0.01 & proportion < 0.1 & FA != '19:0') %>%
+         mutate(species = fct_reorder(species, proportion, sum, .desc = TRUE)), aes(x = proportion, y = species, fill = FA)) +
   geom_col(position = "stack") +
   scale_fill_viridis(discrete = TRUE) +
   labs(fill = "Fatty Acid") +
