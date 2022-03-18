@@ -114,7 +114,13 @@ all_batch <- read_csv("Data/Biomarkers/FattyAcids/core_spp_final_concs.csv")
 #long_dummy <- dummy_trans %>%
 #  pivot_longer(names_to = "")
 
+########## Amount of Gradients samples done
 
+Gradients_all <- Whippo_FA_extraction_log %>%
+  filter(projectID == "Gradients2019") %>%
+  filter(!str_detect(sampleID, "Blank"))
+
+53/155
 
 ############### Actual data BROWSER NEW 2022!
 
@@ -143,7 +149,13 @@ all_batch <- read_csv("Data/Biomarkers/FattyAcids/core_spp_final_concs.csv")
 
  deme_site <- left_join(deme, site_lat, by = "site")
  deme_site$lat <- as.factor(deme_site$lat)
+ 
+ # add gradient - taken from visual of sampling sites figure
+ grad <- c('80', '80', '90', '70', '60', '80', '60', '40', '40', '30', '80', '40', '70')
+ site_grad <- data.frame(site_lat, grad)
 
+ 
+ # major FA by latitude
  ggplot(filter(deme_site, proportion > 0.1 & FA !="19:0"), aes(x = lat, y = proportion, colour = FA)) +
    geom_point() +
    geom_point(size = 4) +
@@ -156,7 +168,38 @@ all_batch <- read_csv("Data/Biomarkers/FattyAcids/core_spp_final_concs.csv")
                summarise("mean proportion" = mean(proportion)), 
              aes(x = lat, y = `mean proportion`, group = FA, colour = FA), lwd = 1) +
    coord_flip()
+ 
+ deme_grad <- left_join(deme_site, site_grad, by = "site")
+ 
+ # major FA by gradient
+ ggplot(filter(deme_grad, proportion > 0.1 & FA !="19:0"), aes(x = grad, y = proportion, colour = FA)) +
+   geom_point() +
+   geom_point(size = 4) +
+   theme_classic() +
+   scale_colour_viridis(discrete = TRUE, end = 0.9) +
+   labs(x = "Ice Cover (%)", y = "Proportion of Total Fatty Acids") +
+   geom_line(data = deme_grad %>%
+               filter(proportion > 0.1 & FA !="19:0") %>%
+               group_by(grad, FA) %>%
+               summarise("mean proportion" = mean(proportion)), 
+             aes(x = grad, y = `mean proportion`, group = FA, colour = FA), lwd = 1) +
+   coord_flip()
+ 
+ # 20:4w6 and 20:5w3 by latitude
+ ggplot(filter(deme_site, FA %in% c("20:4w6", "20:5w3")), aes(x = lat, y = proportion, colour = FA)) +
+   geom_point(size = 4) +
+   geom_smooth(aes(group = FA), method = lm, formula = y ~ x, fill = "grey") + 
+   theme_classic() +
+   scale_colour_viridis(discrete = TRUE, end = 0.9) +
+   labs(x = "Latitude", y = "Proportion of Total Fatty Acids") 
 
+ # 20:4w6 and 20:5w3 by gradient
+ ggplot(filter(deme_grad, FA %in% c("20:4w6", "20:5w3")), aes(x = grad, y = proportion, colour = FA)) +
+   geom_point(size = 4) +
+   geom_smooth(aes(group = FA), method = lm, formula = y ~ x, fill = "grey") + 
+   theme_classic() +
+   scale_colour_viridis(discrete = TRUE, end = 0.9) +
+   labs(x = "Ice Cover (%)", y = "Proportion of Total Fatty Acids") 
 
 
 ### Figure  BROWSER (NEW 2022-03-07)
