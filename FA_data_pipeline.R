@@ -92,10 +92,10 @@ setdiff(invert_cols, algae_cols)
 
 # remove "C" before colnames in inverts dataframe
 colnames(invert_step2) <- gsub(colnames(invert_step2), pattern = "C", replacement = "") 
-# check diff after change
-setdiff(invert_cols, algae_cols)
 # create new list of colnames for comparison to algae
 invert_cols <- colnames(invert_step2)
+# check diff after change
+setdiff(invert_cols, algae_cols)
 
 shared_cols <- intersect(invert_cols, algae_cols)
 
@@ -108,11 +108,16 @@ joined_FA_step1 <- algae_step2 %>%
   mutate(Depth.m = coalesce(Depth.m, depth)) %>%
   mutate(Genus = coalesce(Genus, genus)) %>%
   mutate(Tissue = coalesce(Tissue, tissue.type))
-# drop redundant columns
+# drop redundant columns and move metadata to first columns
 joined_FA_step2 <- joined_FA_step1 %>%
-  select(-c("ID", "Ice.cover", "depth", "genus", "tissue.type"))
+  select(-c("ID", "Ice.cover", "depth", "genus", "tissue.type")) %>%
+  relocate(SiteID:sp.abrev, .after = ProjID) 
+# fill NA in FA values with 0
+joined_FA_step3 <- joined_FA_step2 %>%
+  mutate(across("8:0":"22:4w3", ~replace_na(., 0)))
 
-
+# make sure all columns have been sorted and selected properly
+colnames(joined_FA_step3)
 
 ####
 #<<<<<<<<<<<<<<<<<<<<<<<<<<END OF SCRIPT>>>>>>>>>>>>>>>>>>>>>>>>#
