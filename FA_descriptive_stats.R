@@ -89,7 +89,7 @@ Whippo_FA_extraction_log <- read_csv("C:/Users/rossw/Dropbox/OSF/Fatty Acid Extr
 #   mutate(Conc_num = case_when(Conc == "-----" ~ "0")) 
 #   select(c('Data Filename', 'FA', 'Ret Time', 'Conc'))
   
-all_batch <- read_csv("Data/Biomarkers/FattyAcids/core_spp_final_concs.csv")
+all_batch <- read_csv("Data/Biomarkers/FattyAcids/core_algae_spp_final_concs.csv")
 
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
