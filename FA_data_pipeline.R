@@ -90,17 +90,63 @@ algae_cols <- colnames(algae_step3)
 
 # PREPARE INVERT DATASET FOR JOINING
 
+# create new column in metadata to join by sample number
+sample_metadata_step1 <- sample_metadata %>%
+  mutate(sampleNum = substr(ProjID, 4, 7)) %>%
+  mutate(sampleNum = str_remove(sampleNum, "^0+"))
+# reduce to name only columns
+sample_metadata_step2 <- sample_metadata_step1 %>%
+  select(ProjID, sampleNum)
+
 # extract ProjID value into new column
 invert_step1 <- invert_raw %>%
   mutate(ProjID = str_extract(`ID`, '.*?(?=_)'))
 # filter out non-CORE project data
 invert_step2 <- invert_step1 %>%
-  filter(str_length(ProjID) > 6)
-# join invert data with metadata by ProjID column
+  filter(substr(ProjID, 1, 6) != "ANTSEA")
+# fix ProjID names with incorrect leading zeros and bad values
+invert_step2$ProjID <- invert_step2$ProjID %>%
+  recode("0962" = "962",
+         "0963" = "963",
+         "0964" = "964",
+         "0965" = "965",
+         "0974" = "974",
+         "0975" = "975",
+         "0976" = "976",
+         "0977" = "977",
+         "0978" = "978",
+         "0979" = "979",
+         "0980" = "980",
+         "0981" = "981",
+         "0987" = "987",
+         "0988" = "988",
+         "0989" = "989",
+         "0990" = "990",
+         "0991" = "991",
+         "0996" = "996",
+         "0997" = "997",
+         "0998" = "998",
+         "0999" = "999",
+         "01F0421" = "421",
+         "01F0422" = "422")
+# duplicate and rename ProjID column for joining
 invert_step3 <- invert_step2 %>%
+  mutate(sampleNum = ProjID)
+# add ProjID from metadata column
+invert_step4 <- invert_step3 %>%
+  left_join(sample_metadata_step2, by = "sampleNum")
+# create new column joining correct ProjID names
+invert_step5 <- invert_step4 %>%
+  mutate(ProjID.z = coalesce(ProjID.y, sampleNum))
+# remove old ProjID names and rename column
+invert_step6 <- invert_step5 %>%
+  mutate(ProjID = ProjID.z) %>%
+  select(-ProjID.x, -ProjID.y, -ProjID.z, -sampleNum)
+# join invert data with metadata by ProjID column
+invert_step7 <- invert_step6 %>%
   left_join(sample_metadata, by = "ProjID")
 # create list of colnames for comparison to algae
-invert_cols <- colnames(invert_step3)
+invert_cols <- colnames(invert_step7)
 
 
 # find differences in column names between algae and inverts
@@ -109,9 +155,9 @@ setdiff(invert_cols, algae_cols)
 
 
 # remove "C" before colnames in inverts dataframe
-colnames(invert_step3) <- gsub(colnames(invert_step3), pattern = "C", replacement = "") 
+colnames(invert_step7) <- gsub(colnames(invert_step7), pattern = "C", replacement = "") 
 # create new list of colnames for comparison to algae
-invert_cols <- colnames(invert_step3)
+invert_cols <- colnames(invert_step7)
 # check diff after change
 setdiff(invert_cols, algae_cols)
 
@@ -120,11 +166,12 @@ shared_cols <- intersect(invert_cols, algae_cols)
 
 # join inverts to algae and metadata across ProjID column and coalesce columns
 joined_FA_step1 <- algae_step3 %>%
-  full_join(invert_step3, by = shared_cols) %>%
+  full_join(invert_step7, by = shared_cols) %>%
   mutate(sample = coalesce(sample, ID)) %>%
   mutate(IceCoverCat = coalesce(IceCoverCat, Ice.cover)) %>%
   mutate(Depth.m = coalesce(Depth.m, depth)) %>%
   mutate(Genus = coalesce(Genus, genus)) %>%
+  mutate(species = coalesce(species, species.x)) %>%
   mutate(Tissue = coalesce(Tissue, tissue.type))
 # drop redundant columns and move metadata to first columns
 joined_FA_step2 <- joined_FA_step1 %>%
@@ -153,6 +200,13 @@ joined_FA_step5 <- joined_FA_step4 %>%
 
 # make sure all columns have been sorted and selected properly
 colnames(joined_FA_step5)
+
+
+# save final joined FA dataset with different name
+gradients2019_corespecies_FA_QAQC <- joined_FA_step5
+
+# write .csv with current joined data
+write_csv(gradients2019_corespecies_FA_QAQC, "Data/Biomarkers/FattyAcids/gradients2019_corespecies_FA_QAQC.csv")
 
 ####
 #<<<<<<<<<<<<<<<<<<<<<<<<<<END OF SCRIPT>>>>>>>>>>>>>>>>>>>>>>>>#
