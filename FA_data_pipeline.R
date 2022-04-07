@@ -25,10 +25,8 @@
 
 # TO DO 
 
-# Sample ID definitely off for some invert samples (labeled as site 1, but 
-# definitely not), and possibly some algae samples. Need to consult the 
-# 'phonebook' to see where the errors are (appear to be mostly in sites
-# 1-3.)
+# 03F0146 in metadata is duplicated, second one should be 03F0147?
+# 12F1103-4 and 12F1111-12 mislabeled with 'S'
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # TABLE OF CONTENTS                                                            ####
@@ -52,6 +50,7 @@
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 library(tidyverse)
+library(stringr)
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # READ IN AND PREPARE DATA                                                     ####
@@ -60,25 +59,60 @@ library(tidyverse)
 
 algae_raw <- read_csv("Data/Biomarkers/FattyAcids/core_algae_spp_final_concs.csv")
 invert_raw <- read_csv("Data/Biomarkers/FattyAcids/core_invert_proportions - Sheet1.csv")
-sample_metadata <- read_csv("Data/Biomarkers/FattyAcids/B-236_Fatty-Acid_Collections.csv")
+sample_metadata <- read_csv("Data/Biomarkers/FattyAcids/B-236_Fatty-Acid_Collections_QAQC.csv")
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # MANIPULATE DATA                                                              ####
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+# PREPARE METADATASET FOR JOINING
+
+# remove duplicated columns, make ice cover cat character
+sample_metadata_step1 <- sample_metadata %>%
+  select(!(X:LON_DD.1)) %>%
+  mutate(IceCoverCat = as.character(IceCoverCat))
+# fix ProjID names with incorrect values
+sample_metadata_step1$ProjID <- sample_metadata_step1$ProjID %>%
+  recode("12S1103" = "12F1103",
+         "12S1104" = "12F1104",
+         "12S1111" = "12F1111",
+         "12S1112" = "12F1112")
+sample_metadata_step1[120,1] <- "03F0147"
+# Update phylogenetic labels
+sample_metadata_step1$genusSpecies <- sample_metadata_step1$genusSpecies %>%
+  recode("Gigartina skottsbergii" = "Sarcopeltis antarctica",
+         "Rhodokrambe lanigioides" = "Myriogramme manginii")
+sample_metadata_step1$Genus <- sample_metadata_step1$Genus %>%
+  recode("Gigartina" = "Sarcopeltis",
+         "Rhodokrambe" = "Myriogramme")
+sample_metadata_step1$species <- sample_metadata_step1$species %>%
+  recode("skottsbergii" = "antarctica",
+         "lanigioides" = "manginii")
+# create new column in metadata to join by sample number
+sample_metadata_step2 <- sample_metadata_step1 %>%
+  mutate(sampleNum = substr(ProjID, 4, 7)) %>%
+  mutate(sampleNum = str_remove(sampleNum, "^0+"))
+# reduce to name only columns
+sample_metadata_step3 <- sample_metadata_step2 %>%
+  select(ProjID, sampleNum)
+
+
+
+
 # PREPARE ALGAL DATASET FOR JOINING
+
 
 # extract ProjID value into new column and pivot data wider
 algae_step1 <- algae_raw %>% 
   mutate(ProjID = str_extract(`sample`, '(?<=_).*?(?=_)')) %>%
   pivot_wider(names_from = FA, values_from = proportion, values_fill = 0)
-# join algae data with metadata by ProjID column
+# join algae data with metadata step 1 by ProjID column
 algae_step2 <- algae_step1 %>%
-  left_join(sample_metadata, by = "ProjID")
-# create sp.abrev and phyla columns
+  left_join(sample_metadata_step1, by = "ProjID")
+# create sp.abrev and phylum columns 
 algae_step3 <- algae_step2 %>%
   mutate(sp.abrev = substr(sample, 1, 4)) %>%
-  mutate(phyla = case_when(sp.abrev == "DEME" ~ "ochrophyta",
+  mutate(phylum = case_when(sp.abrev == "DEME" ~ "ochrophyta",
                            sp.abrev == "HIGR" ~ "ochrophyta",
                            sp.abrev == "IRCO" ~ "rhodophyta",
                            sp.abrev == "PHAN" ~ "rhodophyta",
@@ -89,15 +123,10 @@ algae_step3 <- algae_step2 %>%
 algae_cols <- colnames(algae_step3)
 
 
+
+
 # PREPARE INVERT DATASET FOR JOINING
 
-# create new column in metadata to join by sample number
-sample_metadata_step1 <- sample_metadata %>%
-  mutate(sampleNum = substr(ProjID, 4, 7)) %>%
-  mutate(sampleNum = str_remove(sampleNum, "^0+"))
-# reduce to name only columns
-sample_metadata_step2 <- sample_metadata_step1 %>%
-  select(ProjID, sampleNum)
 
 # extract ProjID value into new column
 invert_step1 <- invert_raw %>%
@@ -129,13 +158,43 @@ invert_step2$ProjID <- invert_step2$ProjID %>%
          "0998" = "998",
          "0999" = "999",
          "01F0421" = "421",
-         "01F0422" = "422")
+         "01F0422" = "422",
+         "01F0067" = "02F0067",
+         "01F0068" = "02F0068",
+         "01F0069" = "02F0069",
+         "01F0070" = "02F0070",
+         "01F0071" = "02F0071",
+         "01F0072" = "02F0072",
+         "01F0073" = "02F0073",
+         "01F0074" = "02F0074",
+         "01F0075" = "02F0075",
+         "01F0076" = "02F0076",
+         "01F0086" = "02F0086",
+         "01F0087" = "02F0087",
+         "01F0092" = "02F0092",
+         "01F0093" = "02F0093",
+         "01F0094" = "02F0094",
+         "01F0100" = "02F0100",
+         "01F0101" = "02F0101",
+         "01F0112" = "02F0112",
+         "01F0113" = "02F0113",
+         "01F0114" = "02F0114",
+         "01F0115" = "02F0115",
+         "01F0116" = "02F0116",
+         "01F0122" = "02F0122",
+         "01F0123" = "02F0123",
+         "01F0124" = "02F0124",
+         "01F0130" = "02F0130",
+         "01F0131" = "02F0131",
+         "01F0216" = "03F0216",
+         "01F0217" = "03F0217",
+         "01F0218" = "03F0218")
 # duplicate and rename ProjID column for joining
 invert_step3 <- invert_step2 %>%
   mutate(sampleNum = ProjID)
 # add ProjID from metadata column
 invert_step4 <- invert_step3 %>%
-  left_join(sample_metadata_step2, by = "sampleNum")
+  left_join(sample_metadata_step3, by = "sampleNum")
 # create new column joining correct ProjID names
 invert_step5 <- invert_step4 %>%
   mutate(ProjID.z = coalesce(ProjID.y, sampleNum))
@@ -143,9 +202,10 @@ invert_step5 <- invert_step4 %>%
 invert_step6 <- invert_step5 %>%
   mutate(ProjID = ProjID.z) %>%
   select(-ProjID.x, -ProjID.y, -ProjID.z, -sampleNum)
-# join invert data with metadata by ProjID column
+# join invert data with metadata by ProjID column, drop Ice.cover column
 invert_step7 <- invert_step6 %>%
-  left_join(sample_metadata, by = "ProjID")
+  left_join(sample_metadata_step1, by = "ProjID") %>%
+  select(!Ice.cover)
 # create list of colnames for comparison to algae
 invert_cols <- colnames(invert_step7)
 
@@ -156,7 +216,7 @@ setdiff(invert_cols, algae_cols)
 
 
 # remove "C" before colnames in inverts dataframe
-colnames(invert_step7) <- gsub(colnames(invert_step7), pattern = "C", replacement = "") 
+colnames(invert_step7) <- str_replace(colnames(invert_step7), pattern = "[C](?=[12])", replacement = "") 
 # create new list of colnames for comparison to algae
 invert_cols <- colnames(invert_step7)
 # check diff after change
@@ -169,25 +229,26 @@ shared_cols <- intersect(invert_cols, algae_cols)
 joined_FA_step1 <- algae_step3 %>%
   full_join(invert_step7, by = shared_cols) %>%
   mutate(sample = coalesce(sample, ID)) %>%
-  mutate(IceCoverCat = coalesce(IceCoverCat, Ice.cover)) %>%
   mutate(Depth.m = coalesce(Depth.m, depth)) %>%
   mutate(Genus = coalesce(Genus, genus)) %>%
   mutate(species = coalesce(species, species.x)) %>%
-  mutate(Tissue = coalesce(Tissue, tissue.type))
+  mutate(Tissue = coalesce(Tissue, tissue.type)) %>%
+  mutate(phylum = coalesce(phylum, phyla))
 # drop redundant columns and move metadata to first columns
 joined_FA_step2 <- joined_FA_step1 %>%
   select(-c("ID", 
             "Type",
             "EnteredBy",
-            "Ice.cover", 
+            "DATE",
             "depth", 
             "genus", 
             "tissue.type", 
             "species.x", 
             "FAvialNum.y",
-            "Iceoverat",
+            "IceCoverCat",
             "species.y",
-            "omments")) %>%
+            "Comments",
+            "phyla")) %>%
   relocate(SiteID:season, .after = ProjID) 
 # join FAvialNum columns together
 joined_FA_step3 <- joined_FA_step2 %>%

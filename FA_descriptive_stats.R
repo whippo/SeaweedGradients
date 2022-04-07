@@ -133,6 +133,8 @@ Gradients_all <- Whippo_FA_extraction_log %>%
                               startsWith(sample, "PLCA") ~ "P. cartilagineum",
                               startsWith(sample, "MYMA") ~ "M. manginii"))
 
+# export data to be used by other scripts
+ write_csv(grad_conc, "grad_conc_QAQC.csv")
 
 
 # DEME only for gradient analysis
