@@ -46,6 +46,7 @@
 #             Browser instead of Insight. Started w/ batch 1
 # 2022-03-07 Finished batch 1 and 2, used code to create basic summary stats
 # 2022-03-18 Finished batch 3, added to analyses
+# 2022-04-19 batches 4 and 5 now included
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # LOAD PACKAGES                                                                ####
@@ -120,7 +121,7 @@ Gradients_all <- Whippo_FA_extraction_log %>%
   filter(projectID == "Gradients2019") %>%
   filter(!str_detect(sampleID, "Blank"))
 
-53/155
+90/155
 
 ############### Actual data BROWSER NEW 2022!
 
@@ -204,8 +205,41 @@ Gradients_all <- Whippo_FA_extraction_log %>%
    labs(x = "Ice Cover (%)", y = "Proportion of Total Fatty Acids") 
 
 
-### Figure  BROWSER (NEW 2022-03-07)
+### Figure  BROWSER (NEW 2022-04-14)
 
+
+ # pivot data wide for PCA
+ grad_conc_wide <- grad_conc %>%
+   select(FA, species, proportion, sample) %>%
+   pivot_wider(names_from = FA, values_from = proportion, values_fill = 0)
+ # remove zero columns
+ grad_conc_PCA <- grad_conc_wide %>%
+   select(where(~ any(. != 0)))
+ # run PCA
+PCA_results <-  prcomp(grad_conc_PCA[,c(3:63)], scale = TRUE)
+PCA_results$rotation <- -1*PCA_results$rotation
+PCA_results$rotation
+#reverse the signs of the scores
+PCA_results$x <- -1*PCA_results$x
+#display the first six scores
+head(PCA_results$x)
+
+# plot how much variance
+plot(PCA_results)
+
+# calc variance explained
+var_explained <- PCA_results$sdev^2/sum(PCA_results$sdev^2)
+
+# biplot of 2 most important axes
+PCA_results$x %>% 
+  as.data.frame %>%
+  ggplot(aes(x=PC1,y=PC2)) + geom_point(aes(color=grad_conc_PCA$species),size=4) +
+  theme_minimal() +
+  scale_color_viridis(discrete = TRUE) +
+  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
+       y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
+
+ 
 # MDS
 
 # pivot data wide for mds
