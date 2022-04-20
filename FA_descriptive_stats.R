@@ -55,6 +55,7 @@
 library(tidyverse)
 library(vegan)
 library(viridis)
+library(psych) # pairs panel
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # READ IN AND PREPARE DATA                                                     ####
@@ -239,6 +240,35 @@ PCA_results$x %>%
   labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
        y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
 
+
+# run PCA for DEME only
+deme_pca <- grad_conc_PCA %>%
+  filter(species == "D. menziesii") %>%
+  select(where(~ any(. != 0)))
+PCA_results <-  prcomp(deme_pca[,c(3:58)], scale = TRUE)
+PCA_results$rotation <- -1*PCA_results$rotation
+PCA_results$rotation
+#reverse the signs of the scores
+PCA_results$x <- -1*PCA_results$x
+#display the first six scores
+head(PCA_results$x)
+
+# plot how much variance
+plot(PCA_results)
+
+# calc variance explained
+var_explained <- PCA_results$sdev^2/sum(PCA_results$sdev^2)
+
+# biplot of 2 most important axes
+PCA_results$x %>% 
+  as.data.frame %>%
+  ggplot(aes(x=PC1,y=PC2)) + 
+  geom_point() +
+  theme_minimal() +
+  scale_color_viridis(discrete = TRUE) +
+  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
+       y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
+
  
 # MDS
 
@@ -292,9 +322,47 @@ ggplot(plot_data_batch_1_2, aes(x=MDS1, y=MDS2)) +
 
 
 
+# PAIRS PANELS OF FA
+
+# all gradients site joining
+
+grad_site <- grad_conc %>%
+  mutate(site = str_sub(sample, 6, 7))
 
 
+site <- c('02', '03', '04', '05', '07', '08', '09', '10', '11', '12', '13', '14', '15')
+lat <- c(-67.5567, -68.1758, -68.6921, -67.5488, -66.0894, -65.5131, -65.1043, -64.9002, -64.7932, -64.7720, -66.0251, -64.7793, -65.2402)
 
+site_lat <- data.frame(site, lat)
+
+all_site <- left_join(grad_site, site_lat, by = "site")
+all_site$lat <- as.factor(all_site$lat)
+
+# add gradient - taken from visual of sampling sites figure
+grad <- c('80', '80', '90', '70', '60', '80', '60', '40', '40', '30', '80', '40', '70')
+site_grad <- data.frame(site_lat, grad)
+
+# pivot data wide for pairs
+all_site_wide <- all_site %>%
+  select(FA, species, proportion, sample, site, lat) %>%
+  pivot_wider(names_from = FA, values_from = proportion, values_fill = 0)
+# remove zero columns
+all_site_pairs <- all_site_wide %>%
+  select(where(~ any(. != 0)))
+# create mean values
+all_site_means <- all_site_pairs %>%
+  select(-c('site', 'sample')) %>%
+  group_by(species, lat) %>%
+  summarise(across(everything(), mean))
+# reduce number of FAs
+all_site_reduced <- all_site_pairs %>%
+  select(species, lat, `8:0`, `12:0`, `16:0`, `18:0`, `20:0`, `22:0`, `20:4w6`, `20:5w3`, `22:6w3`) %>%
+  filter(species == 'P. cartilagineum')
+  #filter(species == 'D. menziesii')
+  #filter(species == 'P. antarctica')
+  #filter(species == 'H. grandifolius')
+  #filter(species == 'M. manginii')
+pairs.panels(all_site_reduced[,2:11])
 
 
 
