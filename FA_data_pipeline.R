@@ -4,7 +4,7 @@
 # Data are current as of 2022-03-24                                              ##
 # Data source: Antarctic Gradients 2019                                          ##
 # R code prepared by Ross Whippo                                                 ##
-# Last updated 2022-03-24                                                        ##
+# Last updated 2022-04-20                                                        ##
 #                                                                                ##
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -25,8 +25,8 @@
 
 # TO DO 
 
-# 03F0146 in metadata is duplicated, second one should be 03F0147?
-# 12F1103-4 and 12F1111-12 mislabeled with 'S'
+# 16:0 is duplicated in invert data, need to choose one
+# PLCA_10F0855_0078 is not in the metadata, but IS in the phonebook
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # TABLE OF CONTENTS                                                            ####
@@ -44,6 +44,7 @@
 
 # 2022-03-24  Script created
 # 2022-03-31  Final first version of output file produced
+# 2022-04-20  Added 'type' column to easily separate inverts and algae
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # LOAD PACKAGES                                                                ####
@@ -118,9 +119,11 @@ algae_step3 <- algae_step2 %>%
                            sp.abrev == "PHAN" ~ "rhodophyta",
                            sp.abrev == "PLCA" ~ "rhodophtya",
                            sp.abrev == "MYMA" ~ "rhodophyta"))
-
+# add type column
+algae_step3$type <- 'algae'
 # create list of colnames for comparison to inverts
 algae_cols <- colnames(algae_step3)
+
 
 
 
@@ -206,6 +209,8 @@ invert_step6 <- invert_step5 %>%
 invert_step7 <- invert_step6 %>%
   left_join(sample_metadata_step1, by = "ProjID") %>%
   select(!Ice.cover)
+# add type column
+invert_step7$type <- "invert"
 # create list of colnames for comparison to algae
 invert_cols <- colnames(invert_step7)
 

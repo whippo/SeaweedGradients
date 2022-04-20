@@ -10,19 +10,17 @@
 
 # SUMMARY:
 
-# Script to generate descriptive statistical summaries of fatty acid data collected
+# Script to generate descriptive statistical summaries of core fatty acid data 
 # from Antarctic Gradients 2019 project. 
 
 
 # Required Files (check that script is loading latest version):
-# dummy_sample_values.csv
-# Gradients19_FA_Concs.csv
-# Gradients_FA_Concs_Insight.csv
 # Whippo_FA_extraction_log.csv
+# gradients2019_corespecies_FA_QAQC.csv
 
 
 # Associated Scripts:
-# FILE.R
+# FA_data_pipeline.R
 
 # TO DO 
 
@@ -32,7 +30,7 @@
 # RECENT CHANGES TO SCRIPT                                                        +
 # LOAD PACKAGES                                                                   +
 # READ IN AND PREPARE DATA                                                        +
-# MANIPULATE DATA                                                                 +
+# DATA SUMMARY                                                                    +
 #                                                                                 +
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -47,102 +45,59 @@
 # 2022-03-07 Finished batch 1 and 2, used code to create basic summary stats
 # 2022-03-18 Finished batch 3, added to analyses
 # 2022-04-19 batches 4 and 5 now included
+# 2022-04-20 cleaned up script to run from new QC data and removed unused parts
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # LOAD PACKAGES                                                                ####
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-library(tidyverse)
-library(vegan)
-library(viridis)
+library(tidyverse) # data cleanup
+library(vegan) # 'community' analyses
+library(viridis) # color palette
 library(psych) # pairs panel
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # READ IN AND PREPARE DATA                                                     ####
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-# dummy_data <- read_csv("Data/Biomarkers/FattyAcids/dummy_sample_values.csv")
 
-# OLD Browser data
-# Gradients19_FA_Concs <- read_csv("Data/Biomarkers/FattyAcids/Gradients19_FA_Concs.csv", 
-#                                                  col_types = cols(Conc = col_double(), 
-#                                                  Date.anal = col_character(), Notes = col_character()))
-
-# Insight Data
-# Insight_concs <- read_csv("Data/Biomarkers/FattyAcids/Gradients_FA_Concs_Insight.csv", 
-#                                col_types = cols(Area = col_number(), 
-#                                                Conc = col_number(),
-#                                                          Date_Insight_Anal = col_character(), 
-#                                                          Number_ID = col_character()))
-# Insight_concs <- Insight_concs %>%
-#   mutate(across(where(is.character), ~na_if(., "----")))
-
-# Need to be connected to Dropbox to access LINUX
+# Read in batch log for list of all samples in core analysis
+# Need to be connected to Dropbox to access 
+# LINUX
 Whippo_FA_extraction_log <- read_csv("~/Dropbox/OSF/Fatty Acid Extractions/Whippo_FA_extraction_log.csv") #linux
 # WINDOWS
 Whippo_FA_extraction_log <- read_csv("C:/Users/rossw/Dropbox/OSF/Fatty Acid Extractions/Whippo_FA_extraction_log.csv") #windows
 
 
-# batch 1 import
-# batch1 <- read_csv("Data/Biomarkers/FattyAcids/batch1_gradients19_rawquants.csv")
-  
-# batch1$Conc <- batch1$Conc %>%
-#   replace("-----", 0)
-#   mutate(Conc_num = case_when(Conc == "-----" ~ "0")) 
-#   select(c('Data Filename', 'FA', 'Ret Time', 'Conc'))
-  
-all_batch <- read_csv("Data/Biomarkers/FattyAcids/core_algae_spp_final_concs.csv")
+# Read in all core species from data pipeline
+all_species <- read_csv("Data/Biomarkers/FattyAcids/gradients2019_corespecies_FA_QAQC.csv")
+
+# Pull out algae only
+all_algae <- all_species %>%
+  filter(type == 'algae')
+# Create simplified long dataset for analysis of algae
+long_algae <- all_algae %>%
+  select(sample, batch, genusSpecies, `8:0`:`22:4w3`) %>%
+  pivot_longer(cols = `8:0`:`22:4w3`, names_to = 'FA', values_to = 'proportion')
 
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# MANIPULATE DATA                                                              ####
+# DATA SUMMARY                                                                 ####
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-############### Dummy Data
+###### Amount of Gradients samples done (from batch log)
 
-# convert data to long form
-# dummy_trans <- t(dummy_data)
-# dummy_trans <- as.data.frame(t(dummy_data[,-1]))
-# colnames(dummy_trans) <- dummy_data$X1
-# dummy_trans <- as.numeric(dummy_trans)
-# dummy_nums <- mutate_all(dummy_trans, function(x) as.numeric(as.character(x)))
-# dummy_nums <- dummy_nums %>% 
-#  mutate(
-#    across(everything(), ~replace_na(.x, 0))
-#  )
+# Gradients_all <- Whippo_FA_extraction_log %>%
+#   filter(projectID == "Gradients2019") %>%
+#   filter(!str_detect(sampleID, "Blank"))
+
+# 90/155 = 0.5806452 updated through batch 5
 
 
+###### DEME only for gradient analysis
 
-#long_dummy <- dummy_trans %>%
-#  pivot_longer(names_to = "")
-
-########## Amount of Gradients samples done
-
-Gradients_all <- Whippo_FA_extraction_log %>%
-  filter(projectID == "Gradients2019") %>%
-  filter(!str_detect(sampleID, "Blank"))
-
-90/155
-
-############### Actual data BROWSER NEW 2022!
-
-# create species-genus ID column (BROWSER)
- grad_conc <- all_batch %>%
-   mutate(species = case_when(startsWith(sample, "HIGR") ~ "H. grandifolius",
-                              startsWith(sample, "DEME") ~ "D. menziesii",
-                              startsWith(sample, "IRCO") ~ "I. cordata",
-                              startsWith(sample, "PHAN") ~ "P. antarctica",
-                              startsWith(sample, "PLCA") ~ "P. cartilagineum",
-                              startsWith(sample, "MYMA") ~ "M. manginii"))
-
-# export data to be used by other scripts
- write_csv(grad_conc, "grad_conc_QAQC.csv")
-
-
-# DEME only for gradient analysis
-
- deme <- grad_conc %>%
-   filter(species == "D. menziesii") %>%
+ deme <- long_algae %>%
+   filter(genusSpecies == "Desmarestia menziesii") %>%
    mutate(site = str_sub(sample, 6, 7))
 
 
@@ -206,12 +161,15 @@ Gradients_all <- Whippo_FA_extraction_log %>%
    labs(x = "Ice Cover (%)", y = "Proportion of Total Fatty Acids") 
 
 
-### Figure  BROWSER (NEW 2022-04-14)
+ 
+ 
+###### All algal species analyses
 
-
+# PCA
+ 
  # pivot data wide for PCA
- grad_conc_wide <- grad_conc %>%
-   select(FA, species, proportion, sample) %>%
+ grad_conc_wide <- long_algae %>%
+   select(FA, genusSpecies, proportion, sample) %>%
    pivot_wider(names_from = FA, values_from = proportion, values_fill = 0)
  # remove zero columns
  grad_conc_PCA <- grad_conc_wide %>%
@@ -243,7 +201,7 @@ PCA_results$x %>%
 
 # run PCA for DEME only
 deme_pca <- grad_conc_PCA %>%
-  filter(species == "D. menziesii") %>%
+  filter(genusSpecies == "Desmarestia menziesii") %>%
   select(where(~ any(. != 0)))
 PCA_results <-  prcomp(deme_pca[,c(3:58)], scale = TRUE)
 PCA_results$rotation <- -1*PCA_results$rotation
@@ -273,30 +231,30 @@ PCA_results$x %>%
 # MDS
 
 # pivot data wide for mds
-grad_conc_wide <- grad_conc %>%
-  select(FA, species, proportion, sample) %>%
+grad_conc_wide <- long_algae %>%
+  select(FA, genusSpecies, proportion, sample) %>%
   pivot_wider(names_from = FA, values_from = proportion, values_fill = 0)
 
-# select EPA, ARA, SDA, PAL, OLE, LIN, VAC, and dominant sats (16, 18)
-sub_wide <- grad_conc_wide %>%
-  select(species, sample, "14:0", "16:0", "16:1w7c", "18:0", "18:1w7c", "18:3w3", "18:4w3c", "18:1w9c", "20:4w6", "20:5w3")
+# select EPA, ARA, SDA, PAL, OLE, LIN, VAC, and dominant sats (16, 18) 
+sub_wide <- grad_conc_wide %>% # fix 16:0 error in inverts
+  select(genusSpecies, sample, "14:0", "16:0...50", "16:1w7c", "18:0", "18:1w7c", "18:3w3", "18:4w3c", "18:1w9c", "20:4w6", "20:5w3")
 sub_wide_trans <- (sub_wide[,3:12])
 sub_wide_trans <- bind_cols(sub_wide[1:2], sub_wide_trans)
 
-batch_1_2_MDS <- metaMDS(sub_wide_trans[3:12], autotransform = FALSE, distance = "chisq")
+batch_1_2_MDS <- metaMDS(sub_wide_trans[3:12], autotransform = FALSE, distance = "kulczynski")
 batch_1_2_MDS_points <- batch_1_2_MDS$points
 batch_1_2_MDS_points <- data.frame(batch_1_2_MDS_points)
 plot_data_batch_1_2 <- data.frame(batch_1_2_MDS_points, sub_wide[,1])
 
 library(plyr)
 # create the list of points that will connect the 'hulls' together from your nMDS point data
-chulls_tax <- ddply(plot_data_batch_1_2, .(species), function(df) df[chull(df$MDS1, df$MDS2), ])
+chulls_tax <- ddply(plot_data_batch_1_2, .(genusSpecies), function(df) df[chull(df$MDS1, df$MDS2), ])
 # DETACH PLYR so it won't mess with anything!
 detach(package:plyr)
 
 # create vectors to plot over MDS
 scrs <- as.data.frame(scores(batch_1_2_MDS, display = "sites"))
-scrs <- cbind(scrs, species = sub_wide_trans$species)
+scrs <- cbind(scrs, genusSpecies = sub_wide_trans$genusSpecies)
 
 vf <- envfit(batch_1_2_MDS, sub_wide_trans[3:12], perm = 999)
 
@@ -308,7 +266,7 @@ spp.scrs <- spp.scrs %>%
 
 ggplot(plot_data_batch_1_2, aes(x=MDS1, y=MDS2)) +
   coord_fixed() +
-  geom_point(size = 4, aes(color = species)) + # set size of points to whatever you want
+  geom_point(size = 4, aes(color = genusSpecies)) + # set size of points to whatever you want
   scale_color_viridis(discrete = TRUE, end = 0.9) + # my favorite color-blind and b&w friendly palette, look at the viridis package for more details
   geom_segment(data = spp.scrs,
                aes(x = 0, xend = MDS1, y = 0, yend = MDS2),
@@ -316,7 +274,7 @@ ggplot(plot_data_batch_1_2, aes(x=MDS1, y=MDS2)) +
   geom_text(data = spp.scrs, aes(label = FA), 
             size = 3) +
   geom_polygon(data = chulls_tax,
-               aes(x = MDS1, y = MDS2, color = species), 
+               aes(x = MDS1, y = MDS2, color = genusSpecies), 
                fill = NA) + # optional 'hulls' around points
   theme_classic()  # optional, I just like this theme
 
