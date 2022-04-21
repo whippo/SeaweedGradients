@@ -1,10 +1,10 @@
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #                                                                                ##
 # Antarctica Algae FA Data Pipeline                                              ##
-# Data are current as of 2022-03-24                                              ##
+# Data are current as of 2022-04-21                                              ##
 # Data source: Antarctic Gradients 2019                                          ##
 # R code prepared by Ross Whippo                                                 ##
-# Last updated 2022-04-20                                                        ##
+# Last updated 2022-04-21                                                        ##
 #                                                                                ##
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -25,8 +25,8 @@
 
 # TO DO 
 
-# 16:0 is duplicated in invert data, need to choose one
 # PLCA_10F0855_0078 is not in the metadata, but IS in the phonebook
+# need to fix ID update from Katrin SI values
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # TABLE OF CONTENTS                                                            ####
@@ -45,6 +45,7 @@
 # 2022-03-24  Script created
 # 2022-03-31  Final first version of output file produced
 # 2022-04-20  Added 'type' column to easily separate inverts and algae
+# 2022-04-21  Deleted 16:0 column that was incorrect in inverts
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # LOAD PACKAGES                                                                ####
@@ -131,14 +132,18 @@ algae_cols <- colnames(algae_step3)
 # PREPARE INVERT DATASET FOR JOINING
 
 
-# extract ProjID value into new column
+# remove erroneous 16:0 values and rename column
 invert_step1 <- invert_raw %>%
+  select(!'C16:0...20') %>%
+  rename('C16:0' = 'C16:0...21')
+# extract ProjID value into new column
+invert_step2 <- invert_step1 %>%
   mutate(ProjID = str_extract(`ID`, '.*?(?=_)'))
 # filter out non-CORE project data
-invert_step2 <- invert_step1 %>%
+invert_step3 <- invert_step2 %>%
   filter(substr(ProjID, 1, 6) != "ANTSEA")
 # fix ProjID names with incorrect leading zeros and bad values
-invert_step2$ProjID <- invert_step2$ProjID %>%
+invert_step3$ProjID <- invert_step3$ProjID %>%
   recode("0962" = "962",
          "0963" = "963",
          "0964" = "964",
@@ -193,26 +198,26 @@ invert_step2$ProjID <- invert_step2$ProjID %>%
          "01F0217" = "03F0217",
          "01F0218" = "03F0218")
 # duplicate and rename ProjID column for joining
-invert_step3 <- invert_step2 %>%
+invert_step4 <- invert_step3 %>%
   mutate(sampleNum = ProjID)
 # add ProjID from metadata column
-invert_step4 <- invert_step3 %>%
+invert_step5 <- invert_step4 %>%
   left_join(sample_metadata_step3, by = "sampleNum")
 # create new column joining correct ProjID names
-invert_step5 <- invert_step4 %>%
+invert_step6 <- invert_step5 %>%
   mutate(ProjID.z = coalesce(ProjID.y, sampleNum))
 # remove old ProjID names and rename column
-invert_step6 <- invert_step5 %>%
+invert_step7 <- invert_step6 %>%
   mutate(ProjID = ProjID.z) %>%
   select(-ProjID.x, -ProjID.y, -ProjID.z, -sampleNum)
 # join invert data with metadata by ProjID column, drop Ice.cover column
-invert_step7 <- invert_step6 %>%
+invert_step8 <- invert_step7 %>%
   left_join(sample_metadata_step1, by = "ProjID") %>%
   select(!Ice.cover)
 # add type column
-invert_step7$type <- "invert"
+invert_step8$type <- "invert"
 # create list of colnames for comparison to algae
-invert_cols <- colnames(invert_step7)
+invert_cols <- colnames(invert_step8)
 
 
 # find differences in column names between algae and inverts
@@ -221,9 +226,9 @@ setdiff(invert_cols, algae_cols)
 
 
 # remove "C" before colnames in inverts dataframe
-colnames(invert_step7) <- str_replace(colnames(invert_step7), pattern = "[C](?=[12])", replacement = "") 
+colnames(invert_step8) <- str_replace(colnames(invert_step8), pattern = "[C](?=[12])", replacement = "") 
 # create new list of colnames for comparison to algae
-invert_cols <- colnames(invert_step7)
+invert_cols <- colnames(invert_step8)
 # check diff after change
 setdiff(invert_cols, algae_cols)
 
@@ -232,10 +237,10 @@ shared_cols <- intersect(invert_cols, algae_cols)
 
 # join inverts to algae and metadata across ProjID column and coalesce columns
 joined_FA_step1 <- algae_step3 %>%
-  full_join(invert_step7, by = shared_cols) %>%
+  full_join(invert_step8, by = shared_cols) %>%
   mutate(sample = coalesce(sample, ID)) %>%
   mutate(Depth.m = coalesce(Depth.m, depth)) %>%
-  mutate(Genus = coalesce(Genus, genus)) %>%
+  mutate(Genus = coalesce(genus, genus.x)) %>%
   mutate(species = coalesce(species, species.x)) %>%
   mutate(Tissue = coalesce(Tissue, tissue.type)) %>%
   mutate(phylum = coalesce(phylum, phyla))
@@ -253,7 +258,9 @@ joined_FA_step2 <- joined_FA_step1 %>%
             "IceCoverCat",
             "species.y",
             "Comments",
-            "phyla")) %>%
+            "phyla",
+            "genus.x",
+            "genus.y")) %>%
   relocate(SiteID:season, .after = ProjID) 
 # join FAvialNum columns together
 joined_FA_step3 <- joined_FA_step2 %>%

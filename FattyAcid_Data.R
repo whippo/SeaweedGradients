@@ -47,6 +47,7 @@
 # 2019-10-17 Created QAQC .csv export for full data set for markdown summary script
 # 2019-11-14 Fixed incorrect kingdom assignments of algae
 # 2020-01-17 Updates are added to github file from here onward
+# 2022-04-21 Attempted to fix some problems with incorrect metadata
 
 ###################################################################################
 # LOAD PACKAGES                                                                   #
@@ -64,9 +65,8 @@ library(viridis)
 # READ IN AND PREPARE DATA                                                        #
 ###################################################################################
 
-setwd("~/Git/SeaweedGradients/Data/Biomarkers/FattyAcids")
 
-raw_biotaxa_0 <- read.csv("B-236_Fatty-Acid_Collections.csv")
+raw_biotaxa_0 <- read.csv("Data/Biomarkers/FattyAcids/B-236_Fatty-Acid_Collections.csv")
 
 str(raw_biotaxa_0)
 
@@ -122,15 +122,15 @@ taxacheck3 <- wm_records_names(taxon_names[101:length(taxon_names)])
 # join tibbles in table
 taxatable1 <- taxacheck1 %>% 
   map_df(tibble::rownames_to_column, .id = 'kingdom')
-taxatable1 <- taxatable1[,2:29]
+taxatable1 <- taxatable1[,2:27]
 
 taxatable2 <- taxacheck2 %>%
   map_df(tibble::rownames_to_column, .id = 'kingdom')
-taxatable2 <- taxatable2[,2:29]
+taxatable2 <- taxatable2[,2:27]
 
 taxatable3 <- taxacheck3 %>%
   map_df(tibble::rownames_to_column, .id = 'kingdom')
-taxatable3 <- taxatable3[,2:29]
+taxatable3 <- taxatable3[,2:27]
 
 checkedtaxatable <- bind_rows(taxatable1, taxatable2, taxatable3)
 checkedtaxatable <- checkedtaxatable %>%
@@ -143,7 +143,7 @@ species_notreturned$status <- "unaccepted"
 names(species_notreturned)[names(species_notreturned)=="value"] <- "scientificname"
 species_notreturned$scientificname <- as.character(species_notreturned$scientificname)
 
-finaltaxacheck <- bind_rows(checkedtaxatable, species_notreturned, .id = "scientificname")
+finaltaxacheck <- bind_rows(checkedtaxatable, species_notreturned)
 
 # extract species not found
 unacceptedtaxa <- filter(finaltaxacheck[,2:length(finaltaxacheck)], status != "accepted")
@@ -152,7 +152,7 @@ unacceptedtaxa <- filter(finaltaxacheck[,2:length(finaltaxacheck)], status != "a
 possibletaxa <- wm_records_taxamatch(species_notreturned$scientificname)
 possibletaxa <- possibletaxa %>% 
   map_df(tibble::rownames_to_column, .id = 'kingdom')
-possibletaxa <- possibletaxa[,2:29]
+possibletaxa <- possibletaxa[,2:28]
 
 ####################### correct species names
 
@@ -214,7 +214,7 @@ checkedtaxatable_2 <- checkedtaxatable
 names(checkedtaxatable_2)[names(checkedtaxatable_2)=="scientificname"] <- "genusSpecies"
 
 raw_biotaxa_3 <- raw_biotaxa_2 %>%
-  left_join(checkedtaxatable_2[c(4,14:18)], by = 'genusSpecies')
+  left_join(checkedtaxatable_2[c(3,14:18)], by = 'genusSpecies')
 
 raw_biotaxa_3$phylum1 <- raw_biotaxa_3$phylum
 
@@ -270,35 +270,19 @@ raw_biotaxa_6 <- raw_biotaxa_5 %>%
                              phylum == "Ochrophyta" ~ "Chromista")
                            )
 raw_biotaxa_7 <- raw_biotaxa_6 %>% 
-  mutate(kingdom = coalesce(kingdom, kingdom1)) %>%
   select( -kingdom1)
-raw_biotaxa_7$kingdom <- raw_biotaxa_7$kingdom %>%
-  replace_na("Animalia")
+
 # add gps collection location for each sample
 
 ant_gps <- read.csv("Data/Biomarkers/FattyAcids/FinalSiteLocations.csv", colClasses=c("SiteID"="character"))
 ant_gps$SiteID <- as.factor(ant_gps$SiteID)
-
-# harmonize SiteID names
-
-ant_gps$SiteID <- ant_gps$SiteID %>%
-  recode("1" =        "01", 
-         "2" =        "02",
-         "3" =        "03",
-         "4" =        "04",
-         "5" =        "05",
-         "6" =        "06",
-         "7" =        "07",
-         "8" =        "08",
-         "9" =        "09"
-  )
 
 raw_biotaxa_8 <- raw_biotaxa_7 %>%
   left_join(ant_gps, by = 'SiteID')
 
 
 
-# write_csv(raw_biotaxa_8, "B-236_Fatty-Acid_Collections_QAQC.csv")
+write_csv(raw_biotaxa_8, "Data/Biomarkers/FattyAcids/B-236_Fatty-Acid_Collections_QAQC.csv")
 
 ####################### make species list
 

@@ -249,7 +249,7 @@ grad_conc_wide <- long_algae %>%
 
 # select EPA, ARA, SDA, PAL, OLE, LIN, VAC, and dominant sats (16, 18) 
 sub_wide <- grad_conc_wide %>% # fix 16:0 error in inverts
-  select(genusSpecies, sample, "14:0", "16:0...50", "16:1w7c", "18:0", "18:1w7c", "18:3w3", "18:4w3c", "18:1w9c", "20:4w6", "20:5w3")
+  select(genusSpecies, sample, "14:0", "16:0", "16:1w7c", "18:0", "18:1w7c", "18:3w3", "18:4w3c", "18:1w9c", "20:4w6", "20:5w3")
 sub_wide_trans <- (sub_wide[,3:12])
 sub_wide_trans <- bind_cols(sub_wide[1:2], sub_wide_trans)
 
@@ -299,22 +299,19 @@ ggplot(plot_data_batch_1_2, aes(x=MDS1, y=MDS2)) +
 grad_site <- long_algae %>%
   mutate(site = str_sub(sample, 6, 7))
 
-
+# create site/lat, and add gradient - taken from NIC-Klein-Midpoint-Annual (email from Chuck)
 site <- c('02', '03', '04', '05', '07', '08', '09', '10', '11', '12', '13', '14', '15')
 lat <- c(-67.5567, -68.1758, -68.6921, -67.5488, -66.0894, -65.5131, -65.1043, -64.9002, -64.7932, -64.7720, -66.0251, -64.7793, -65.2402)
+grad <- c('71.5102', '68.61224', '87.67347', '57.87755', '58.36735', '73.95918', '53.5102', '36.12245', '41.10204', '37.26531', '76.77551', '41.06122', '62.85714')
 
-site_lat <- data.frame(site, lat)
+site_lat <- data.frame(site, lat, grad)
 
 all_site <- left_join(grad_site, site_lat, by = "site")
 all_site$lat <- as.factor(all_site$lat)
 
-# add gradient - taken from visual of sampling sites figure
-grad <- c('80', '80', '90', '70', '60', '80', '60', '40', '40', '30', '80', '40', '70')
-site_grad <- data.frame(site_lat, grad)
-
 # pivot data wide for pairs
 all_site_wide <- all_site %>%
-  select(FA, genusSpecies, proportion, sample, site, lat) %>%
+  select(FA, genusSpecies, proportion, sample, site, lat, grad) %>%
   pivot_wider(names_from = FA, values_from = proportion, values_fill = 0)
 # remove zero columns
 all_site_pairs <- all_site_wide %>%
@@ -325,12 +322,12 @@ all_site_means <- all_site_pairs %>%
   group_by(genusSpecies, lat) %>%
   summarise(across(everything(), mean))
 # reduce number of FAs
-all_site_reduced <- all_site_pairs %>%
-  select(genusSpecies, lat, `14:0`, `16:0...50`, `16:1w7c`, `16:1w5c`, `18:0`, `18:1w7c`, `18:1w9c`, `18:2w6c`,`18:3w3`, `18:4w3c`, `20:0`, `20:4w6`, `20:5w3`, `22:0`) %>%
-  filter(genusSpecies == 'Plocamium cartilagineum')
+all_site_reduced <- all_site_pairs %>% # switch between lat/grad for gradients here
+  select(genusSpecies, grad, `14:0`, `16:0`, `16:1w7c`, `16:1w5c`, `18:0`, `18:1w7c`, `18:1w9c`, `18:2w6c`,`18:3w3`, `18:4w3c`, `20:0`, `20:4w6`, `20:5w3`, `22:0`) %>%
+  #filter(genusSpecies == 'Plocamium cartilagineum')
   #filter(genusSpecies == 'Desmarestia menziesii')
   #filter(genusSpecies == 'Phyllophora antarctica')
-  #filter(genusSpecies == 'Himantothallus grandifolius')
+  filter(genusSpecies == 'Himantothallus grandifolius')
   #filter(genusSpecies == 'Myriogramme manginii')
 pairs.panels(all_site_reduced[,2:16])
 
@@ -361,6 +358,29 @@ pairs.panels(all_site_reduced[,2:16])
 #     16:1w7 = 0.76
 #     16:0 = 0.51
 
+# FAs of gradient interest (>|50| Pearson correlation [moderate or stronger]):
+# (as of batch 5 for FAs - 
+# `14:0`, `16:0...50`, `16:1w7c`, `16:1w5c`, `18:0`, `18:1w7c`, `18:1w9c`, 
+# `18:2w6c`,`18:3w3`, `18:4w3c`, `20:0`, `20:4w6`, `20:5w3`, `22:0`)
+#
+## D. menziesii
+#     20:5w3 = 0.58
+## P. antarctica
+#     18:4w3 = 0.56
+#     18:2w6 = 0.50
+#     18:0 = 0.56
+#     16:0 = -0.63
+## H. grandifolius
+#     20:5w3 = 0.89
+#     20:0 = -0.67
+#     18:4w3 = 0.96
+#     18:3w3 = 0.77
+#     18:1w9 = -0.51
+#     18:1w7 = 0.58
+#     18:0 = 0.64
+#     16:1w7 = -0.99
+#     16:0 = -0.83
+#     14:0 = 0.52
 
 
 
