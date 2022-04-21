@@ -55,6 +55,7 @@ library(tidyverse) # data cleanup
 library(vegan) # 'community' analyses
 library(viridis) # color palette
 library(psych) # pairs panel
+library(ggfortify) # PCA visualizations
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # READ IN AND PREPARE DATA                                                     ####
@@ -75,11 +76,17 @@ all_species <- read_csv("Data/Biomarkers/FattyAcids/gradients2019_corespecies_FA
 # Pull out algae only
 all_algae <- all_species %>%
   filter(type == 'algae')
+
+# temporary fix: add species data to PLCA_10F0855_0078
+all_algae[87,9] <- 'Plocamium cartilagineum'
+
 # Create simplified long dataset for analysis of algae
 long_algae <- all_algae %>%
   select(sample, batch, genusSpecies, `8:0`:`22:4w3`) %>%
   pivot_longer(cols = `8:0`:`22:4w3`, names_to = 'FA', values_to = 'proportion')
 
+
+  
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # DATA SUMMARY                                                                 ####
@@ -192,11 +199,14 @@ var_explained <- PCA_results$sdev^2/sum(PCA_results$sdev^2)
 # biplot of 2 most important axes
 PCA_results$x %>% 
   as.data.frame %>%
-  ggplot(aes(x=PC1,y=PC2)) + geom_point(aes(color=grad_conc_PCA$species),size=4) +
+  ggplot(aes(x=PC1,y=PC2)) + geom_point(aes(color=grad_conc_PCA$genusSpecies),size=4) +
   theme_minimal() +
   scale_color_viridis(discrete = TRUE) +
   labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
        y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
+
+autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 3)
+
 
 
 # run PCA for DEME only
@@ -228,6 +238,8 @@ PCA_results$x %>%
        y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
 
  
+
+
 # MDS
 
 # pivot data wide for mds
@@ -241,7 +253,7 @@ sub_wide <- grad_conc_wide %>% # fix 16:0 error in inverts
 sub_wide_trans <- (sub_wide[,3:12])
 sub_wide_trans <- bind_cols(sub_wide[1:2], sub_wide_trans)
 
-batch_1_2_MDS <- metaMDS(sub_wide_trans[3:12], autotransform = FALSE, distance = "kulczynski")
+batch_1_2_MDS <- metaMDS(sub_wide_trans[3:12], autotransform = TRUE, distance = "canberra")
 batch_1_2_MDS_points <- batch_1_2_MDS$points
 batch_1_2_MDS_points <- data.frame(batch_1_2_MDS_points)
 plot_data_batch_1_2 <- data.frame(batch_1_2_MDS_points, sub_wide[,1])
@@ -284,7 +296,7 @@ ggplot(plot_data_batch_1_2, aes(x=MDS1, y=MDS2)) +
 
 # all gradients site joining
 
-grad_site <- grad_conc %>%
+grad_site <- long_algae %>%
   mutate(site = str_sub(sample, 6, 7))
 
 
@@ -302,7 +314,7 @@ site_grad <- data.frame(site_lat, grad)
 
 # pivot data wide for pairs
 all_site_wide <- all_site %>%
-  select(FA, species, proportion, sample, site, lat) %>%
+  select(FA, genusSpecies, proportion, sample, site, lat) %>%
   pivot_wider(names_from = FA, values_from = proportion, values_fill = 0)
 # remove zero columns
 all_site_pairs <- all_site_wide %>%
@@ -310,17 +322,46 @@ all_site_pairs <- all_site_wide %>%
 # create mean values
 all_site_means <- all_site_pairs %>%
   select(-c('site', 'sample')) %>%
-  group_by(species, lat) %>%
+  group_by(genusSpecies, lat) %>%
   summarise(across(everything(), mean))
 # reduce number of FAs
 all_site_reduced <- all_site_pairs %>%
-  select(species, lat, `8:0`, `12:0`, `16:0`, `18:0`, `20:0`, `22:0`, `20:4w6`, `20:5w3`, `22:6w3`) %>%
-  filter(species == 'P. cartilagineum')
-  #filter(species == 'D. menziesii')
-  #filter(species == 'P. antarctica')
-  #filter(species == 'H. grandifolius')
-  #filter(species == 'M. manginii')
-pairs.panels(all_site_reduced[,2:11])
+  select(genusSpecies, lat, `14:0`, `16:0...50`, `16:1w7c`, `16:1w5c`, `18:0`, `18:1w7c`, `18:1w9c`, `18:2w6c`,`18:3w3`, `18:4w3c`, `20:0`, `20:4w6`, `20:5w3`, `22:0`) %>%
+  filter(genusSpecies == 'Plocamium cartilagineum')
+  #filter(genusSpecies == 'Desmarestia menziesii')
+  #filter(genusSpecies == 'Phyllophora antarctica')
+  #filter(genusSpecies == 'Himantothallus grandifolius')
+  #filter(genusSpecies == 'Myriogramme manginii')
+pairs.panels(all_site_reduced[,2:16])
+
+
+# FAs of lattitude interest (>|50| Pearson correlation [moderate or stronger]):
+# (as of batch 5 for FAs - 
+# `14:0`, `16:0...50`, `16:1w7c`, `16:1w5c`, `18:0`, `18:1w7c`, `18:1w9c`, 
+# `18:2w6c`,`18:3w3`, `18:4w3c`, `20:0`, `20:4w6`, `20:5w3`, `22:0`)
+#
+## P. cartilagineum
+#     22:0 = 0.63
+## D. menziesii
+#     20:5w3 = -0.58
+## P. antarctica
+#     22:0 = -0.58
+#     20:5w3 = -0.53
+#     20:0 = 0.58
+#     18:3w3 = -0.52
+#     16:1w5 = 0.87
+## H. grandifolius
+#     20:5w3 = -0.62
+#     20:0 = 0.66
+#     18:4w3 = -0.74
+#     18:3w3 = -0.50
+#     18:2w6 = 0.52
+#     18:1w7 = -0.50
+#     18:0 = -0.69
+#     16:1w7 = 0.76
+#     16:0 = 0.51
+
+
 
 
 
@@ -352,9 +393,10 @@ plot(Alg_clust, las = 1,
 
 
 # dotplot of final concentration by species by FA
-ggplot(filter(grad_conc, FA %in% c("14:0", "16:0", "16:1w7c", "18:0", "18:1w7c", "18:3w3", "18:4w3c", "18:1w9c", "20:4w6", "20:5w3")), aes(x = FA, y = proportion, colour = species)) +
+ggplot(filter(long_algae, FA %in% c("14:0", "16:0", "16:1w7c", "18:0", "18:1w7c", "18:3w3", "18:4w3c", "18:1w9c", "20:4w6", "20:5w3")), 
+       aes(x = FA, y = proportion, colour = genusSpecies)) +
   geom_point(size = 4, position = position_jitter(width = .1)) +
-  geom_boxplot(data = grad_conc %>% 
+  geom_boxplot(data = long_algae %>% 
                  filter(FA %in% c("14:0", "16:0", "16:1w7c", "18:0", "18:1w7c", "18:3w3", "18:4w3c", "18:1w9c", "20:4w6", "20:5w3")), 
                aes(group = FA, y = proportion), color = "black", alpha = 0, show.legend = FALSE) +
   theme_classic() +
@@ -375,11 +417,11 @@ ggplot(filter(grad_conc, FA %in% c("14:0", "16:0", "16:1w7c", "18:0", "18:1w7c",
 # 18:1n7, 18:3n3 < 0.1, rest = 0.1 < other FA
 
 # stacked barplot of percent contribution of each FA to total FA (dominant)
-ggplot(filter(grad_conc, FA %in% c("14:0", "16:0", "16:1w7c", "18:0", "18:1w7c", "18:3w3", "18:4w3c", "18:1w9c", "20:4w6", "20:5w3")) %>%
-         group_by(species, FA) %>%
+ggplot(filter(long_algae, FA %in% c("14:0", "16:0", "16:1w7c", "18:0", "18:1w7c", "18:3w3", "18:4w3c", "18:1w9c", "20:4w6", "20:5w3")) %>%
+         group_by(genusSpecies, FA) %>%
          summarise(proportion = mean(proportion)) %>%
          ungroup(),
-         aes(x = proportion, y = species, fill = factor(FA, levels = c("14:0", "18:0", "16:1w7c", "18:1w7c", "18:3w3", "18:4w3c", "18:1w9c", "16:0", "20:5w3", "20:4w6")))) +
+         aes(x = proportion, y = genusSpecies, fill = factor(FA, levels = c("14:0", "18:0", "16:1w7c", "18:1w7c", "18:3w3", "18:4w3c", "18:1w9c", "16:0", "20:5w3", "20:4w6")))) +
   geom_col(position = "stack", color = "black") +
   scale_fill_viridis(discrete = TRUE, option = "C") +
   theme_classic() +
@@ -391,8 +433,10 @@ ggplot(filter(grad_conc, FA %in% c("14:0", "16:0", "16:1w7c", "18:0", "18:1w7c",
 
 
 
+  ####
+#<<<<<<<<<<<<<<<<<<<<<<<<<<END OF SCRIPT>>>>>>>>>>>>>>>>>>>>>>>>#
 
-
+# SCRATCH PAD ####
 
 
 # stacked barplot of percent contribution of each FA to total FA (trace)
@@ -414,67 +458,3 @@ ggplot(filter(final_concs, Name %in% c("c18.2n6c", "c18.3n3", "c18.4n3", "c20.4n
   labs(fill = "Species") +
   xlab("Fatty Acid") +
   ylab("Standardized Concentration (ng/ul)")
-
-
-### Figure  INSIGHT
-
-# dotplot of final concentration by species by FA
-ggplot(filter(final_concs_insight, stand_conc > 250), aes(x = Name, y = stand_conc, colour = species)) +
-  geom_point(size = 4) +
-  theme_classic() +
-  scale_colour_viridis(discrete = TRUE, end = 0.9) +
-  labs(x = "Fatty Acid", y = "Concentration (ng/mg)") +
-  theme(axis.text.x = element_text(angle = 270, vjust = 0.1))
-
-# boxplot of final concentration by species by FA
-ggplot(filter(final_concs_insight, stand_conc > 250), aes(x = Name, y = stand_conc, colour = species)) +
-  geom_boxplot() +
-  theme_classic() +
-  scale_colour_viridis(discrete = TRUE, end = 0.9) +
-  labs(x = "Fatty Acid", y = "Concentration (ng/mg)") +
-  theme(axis.text.x = element_text(angle = 270, vjust = 0.1))
-
-# stacked barplot of percent contribution of each FA to total FA (dominant)
-ggplot(filter(final_concs_insight, stand_conc > 250 & Name != 'c19.0'), aes(x = FA_proportion, y = sampleID, fill = Name, group = as.factor(species))) +
-  geom_col(position = "stack") +
-  scale_fill_viridis(discrete = TRUE) +
-  theme_classic() +
-  labs(fill = "Fatty Acid") +
-  xlab("Proportion of Total FA Content") +
-  ylab("Samples") +
-  facet_wrap(~ species)
-
-  # stacked barplot of percent contribution of each FA to total FA (minimal)
-ggplot(filter(final_concs_insight, stand_conc > 25 & stand_conc < 250 & Name != 'c19.0'), aes(x = FA_percent, y = species, fill = Name)) +
-  geom_col(position = "stack") +
-  scale_fill_viridis(discrete = TRUE) +
-  labs(fill = "Fatty Acid") +
-  xlab("Proportion of Total FA Content") +
-  ylab("Species")
-
-# stacked barplot of percent contribution of each FA to total FA (trace)
-ggplot(filter(final_concs_insight, stand_conc < 25 & Name != 'c19.0'), aes(x = FA_percent, y = species, fill = Name)) +
-  geom_col(position = "stack") +
-  scale_fill_viridis(discrete = TRUE) +
-  labs(fill = "Fatty Acid") +
-  xlab("Proportion of Total FA Content") +
-  ylab("Species")
-
-# LIN, ALA, SDA, ARA, EPA
-ggplot(filter(final_concs_insight, Name %in% c("c18.2n6c", "c18.3n3", "c18.4n3", "c20.4n6", "c20.5n3")), aes(x = Name, y = stand_conc, fill = species)) +
-  geom_boxplot(position = "dodge") +
-  theme_classic() +
-  scale_fill_viridis(discrete = TRUE) +
-  scale_x_discrete(labels=c("c18.2n6c" = "LIN (c18.2n6c)", "c18.3n3" = "ALA (c18.3n3)",
-                            "c20.4n6" = "ARA (c20.4n6)", "c20.5n3" = "EPA (c20.5n3)")) +
-  labs(fill = "Species") +
-  xlab("Fatty Acid") +
-  ylab("Standardized Concentration (ng/ul)")
-
-  
-
-
-  ####
-#<<<<<<<<<<<<<<<<<<<<<<<<<<END OF SCRIPT>>>>>>>>>>>>>>>>>>>>>>>>#
-
-# SCRATCH PAD ####
