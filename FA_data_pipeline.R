@@ -4,7 +4,7 @@
 # Data are current as of 2022-04-21                                              ##
 # Data source: Antarctic Gradients 2019                                          ##
 # R code prepared by Ross Whippo                                                 ##
-# Last updated 2022-04-21                                                        ##
+# Last updated 2022-05-02                                                        ##
 #                                                                                ##
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -49,6 +49,7 @@
 # 2022-03-31  Final first version of output file produced
 # 2022-04-20  Added 'type' column to easily separate inverts and algae
 # 2022-04-21  Deleted 16:0 column that was incorrect in inverts
+# 2022-05-02  Corrected additional mislabeled samples, rearranged columns
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # LOAD PACKAGES                                                                ####
@@ -74,8 +75,13 @@ site_cover <- read_csv("Data/Biomarkers/FattyAcids/site_cover.csv",
 
 # PREPARE METADATASET FOR JOINING
 
+# remove 1108 accidental code duplication in phonebook (will need to fix w/ unique
+# value if other sample (Cnemidocarpa sp.) is ever extracted). And remove
+# duplicated sample for 03F0161
+sample_metadata_step0.5 <- sample_metadata[-1108,]
+sample_meatdata_step0.5 <- sample_metadata_step0.5[-152,]
 # remove duplicated columns, make ice cover cat character
-sample_metadata_step1 <- sample_metadata %>%
+sample_metadata_step1 <- sample_metadata_step0.5 %>%
   select(!(X:LON_DD.1)) %>%
   mutate(IceCoverCat = as.character(IceCoverCat))
 # fix ProjID names with incorrect values
@@ -140,9 +146,11 @@ algae_cols <- colnames(algae_step3)
 
 # PREPARE INVERT DATASET FOR JOINING
 
-
+# remove duplicated samples (temp until Julie confirms)
+invert_step0.5 <- invert_raw %>%
+  filter(!ID %in%  c('01F0216_CNEM_632020_10.qgd', '960__DEME (2).qgd'))
 # remove erroneous 16:0 values and rename column
-invert_step1 <- invert_raw %>%
+invert_step1 <- invert_step0.5 %>%
   select(!'C16:0...20') %>%
   rename('C16:0' = 'C16:0...21')
 # extract ProjID value into new column
@@ -227,6 +235,8 @@ invert_step8 <- invert_step7 %>%
 invert_step8$type <- "invert"
 # create list of colnames for comparison to algae
 invert_cols <- colnames(invert_step8)
+# remove duplicated sample
+invert_step8 <- invert_step8[-63,]
 
 
 # find differences in column names between algae and inverts
@@ -295,11 +305,11 @@ joined_FA_step7 <- joined_FA_step6 %>%
 
 
 # make sure all columns have been sorted and selected properly
-colnames(joined_FA_step5)
+colnames(joined_FA_step7)
 
 
 # save final joined FA dataset with different name
-gradients2019_corespecies_FA_QAQC <- joined_FA_step5
+gradients2019_corespecies_FA_QAQC <- joined_FA_step7
 
 # write .csv with current joined data
 write_csv(gradients2019_corespecies_FA_QAQC, "Data/Biomarkers/FattyAcids/gradients2019_corespecies_FA_QAQC.csv")

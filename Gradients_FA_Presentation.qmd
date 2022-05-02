@@ -1,0 +1,182 @@
+---
+title: "Gradients FA Summary"
+author: "CTELab"
+format: 
+  revealjs:
+    theme: night
+    code-fold: true
+editor: visual
+incremental: true
+---
+
+```{r}
+
+library(tidyverse) # data cleanup
+library(viridis) # color palette
+library(ggfortify) # PCA visualizations
+library(vegan) # multivariate analyses
+
+# load in all data
+all_species <- read_csv("Data/Biomarkers/FattyAcids/gradients2019_corespecies_FA_QAQC.csv")
+# subset inverts
+all_inverts <- all_species %>%
+          filter(type == "invert")
+# subset algae
+all_algae <- all_species %>%
+          filter(type == "algae")
+# Create simplified long dataset for analysis of algae
+long_algae <- all_algae %>%
+  select(FAsampleName, batch, genusSpecies, `8:0`:`22:4w3`) %>%
+  pivot_longer(cols = `8:0`:`22:4w3`, names_to = 'FA', values_to = 'proportion')
+ # pivot algae data wide for PCA/nMDS
+ grad_conc_wide <- long_algae %>%
+   select(FA, genusSpecies, proportion, FAsampleName) %>%
+   pivot_wider(names_from = FA, values_from = proportion, values_fill = 0)
+ # Create simplified long dataset for analysis of inverts
+long_inverts <- all_inverts %>%
+  select(FAsampleName, genusSpecies, `8:0`:`22:4w3`) %>%
+  pivot_longer(cols = `8:0`:`22:4w3`, names_to = 'FA', values_to = 'proportion')
+ # pivot algae data wide for PCA/nMDS
+ grad_invert_wide <- long_inverts %>%
+   select(FA, genusSpecies, proportion, FAsampleName) %>%
+   pivot_wider(names_from = FA, values_from = proportion, values_fill = 0)
+ # need to fix duplicated samples in invert dataset
+
+```
+
+## Sample Processing
+
+-   Invertebrate Samples
+
+    -   559 of 559 complete
+
+    -   15 sites
+
+    -   11 species
+
+    -   
+
+        ```{r}
+
+        list(unique(all_inverts$genusSpecies))
+
+        ```
+
+## Sample Processing
+
+-   Algal Samples
+
+    -   106 of 155 complete
+
+        -   remaining chromatograms in progress
+
+    -   13 sites
+
+    -   7 species
+    
+    -   
+
+        ```{r}
+
+        list(unique(all_algae$genusSpecies))
+
+        ```
+    
+## nMDS - Inverts
+
+```{r, error = FALSE, warning = FALSE, message = FALSE}
+
+# select EPA, ARA, SDA, PAL, OLE, LIN, VAC, and dominant sats (16, 18) 
+sub_wide <- grad_invert_wide %>% # fix 16:0 error in inverts
+  select(genusSpecies, FAsampleName, "14:0", "16:0", "16:1w7c", "18:0", "18:1w7c", "18:3w3", "18:4w3c", "18:1w9c", "20:4w6", "20:5w3")
+sub_wide_trans <- (sub_wide[,3:12])
+sub_wide_trans <- bind_cols(sub_wide[1:2], sub_wide_trans)
+
+batch_1_2_MDS <- metaMDS(sub_wide_trans[3:12], autotransform = TRUE, distance = "clark", trace = FALSE)
+batch_1_2_MDS_points <- batch_1_2_MDS$points
+batch_1_2_MDS_points <- data.frame(batch_1_2_MDS_points)
+plot_data_batch_1_2 <- data.frame(batch_1_2_MDS_points, sub_wide[,1])
+
+library(plyr)
+# create the list of points that will connect the 'hulls' together from your nMDS point data
+chulls_tax <- ddply(plot_data_batch_1_2, .(genusSpecies), function(df) df[chull(df$MDS1, df$MDS2), ])
+# DETACH PLYR so it won't mess with anything!
+detach(package:plyr)
+
+# create vectors to plot over MDS
+scrs <- as.data.frame(scores(batch_1_2_MDS, display = "sites"))
+scrs <- cbind(scrs, genusSpecies = sub_wide_trans$genusSpecies)
+
+vf <- envfit(batch_1_2_MDS, sub_wide_trans[3:12], perm = 999)
+
+spp.scrs <- as.data.frame(scores(vf, display = "vectors"))
+spp.scrs <- cbind(spp.scrs, FA = rownames(spp.scrs))
+spp.scrs <- spp.scrs %>%
+  rename(MDS1 = NMDS1,
+         MDS2 = NMDS2)
+
+ggplot(plot_data_batch_1_2, aes(x=MDS1, y=MDS2)) +
+  coord_fixed() +
+  geom_point(size = 4, aes(color = genusSpecies)) + # set size of points to whatever you want
+  scale_color_viridis(discrete = TRUE, end = 0.9, option = 'C') + # my favorite color-blind and b&w friendly palette, look at the viridis package for more details
+  geom_segment(data = spp.scrs,
+               aes(x = 0, xend = MDS1, y = 0, yend = MDS2),
+               arrow = arrow(length = unit(0.25, "cm")), color = "grey") +
+  geom_text(data = spp.scrs, aes(label = FA), 
+            size = 3) +
+  geom_polygon(data = chulls_tax,
+               aes(x = MDS1, y = MDS2, color = genusSpecies), 
+               fill = NA) + # optional 'hulls' around points
+  theme_classic()  # optional, I just like this theme```
+
+```
+
+
+## nMDS - Algae
+
+```{r, error = FALSE, warning = FALSE, message = FALSE}
+
+# select EPA, ARA, SDA, PAL, OLE, LIN, VAC, and dominant sats (16, 18) 
+sub_wide <- grad_conc_wide %>% # fix 16:0 error in inverts
+  select(genusSpecies, FAsampleName, "14:0", "16:0", "16:1w7c", "18:0", "18:1w7c", "18:3w3", "18:4w3c", "18:1w9c", "20:4w6", "20:5w3")
+sub_wide_trans <- (sub_wide[,3:12])
+sub_wide_trans <- bind_cols(sub_wide[1:2], sub_wide_trans)
+
+batch_1_2_MDS <- metaMDS(sub_wide_trans[3:12], autotransform = TRUE, distance = "clark", trace = FALSE)
+batch_1_2_MDS_points <- batch_1_2_MDS$points
+batch_1_2_MDS_points <- data.frame(batch_1_2_MDS_points)
+plot_data_batch_1_2 <- data.frame(batch_1_2_MDS_points, sub_wide[,1])
+
+library(plyr)
+# create the list of points that will connect the 'hulls' together from your nMDS point data
+chulls_tax <- ddply(plot_data_batch_1_2, .(genusSpecies), function(df) df[chull(df$MDS1, df$MDS2), ])
+# DETACH PLYR so it won't mess with anything!
+detach(package:plyr)
+
+# create vectors to plot over MDS
+scrs <- as.data.frame(scores(batch_1_2_MDS, display = "sites"))
+scrs <- cbind(scrs, genusSpecies = sub_wide_trans$genusSpecies)
+
+vf <- envfit(batch_1_2_MDS, sub_wide_trans[3:12], perm = 999)
+
+spp.scrs <- as.data.frame(scores(vf, display = "vectors"))
+spp.scrs <- cbind(spp.scrs, FA = rownames(spp.scrs))
+spp.scrs <- spp.scrs %>%
+  rename(MDS1 = NMDS1,
+         MDS2 = NMDS2)
+
+ggplot(plot_data_batch_1_2, aes(x=MDS1, y=MDS2)) +
+  coord_fixed() +
+  geom_point(size = 4, aes(color = genusSpecies)) + # set size of points to whatever you want
+  scale_color_viridis(discrete = TRUE, end = 0.9) + # my favorite color-blind and b&w friendly palette, look at the viridis package for more details
+  geom_segment(data = spp.scrs,
+               aes(x = 0, xend = MDS1, y = 0, yend = MDS2),
+               arrow = arrow(length = unit(0.25, "cm")), color = "grey") +
+  geom_text(data = spp.scrs, aes(label = FA), 
+            size = 3) +
+  geom_polygon(data = chulls_tax,
+               aes(x = MDS1, y = MDS2, color = genusSpecies), 
+               fill = NA) + # optional 'hulls' around points
+  theme_classic()  # optional, I just like this theme```
+
+```

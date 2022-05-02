@@ -77,12 +77,9 @@ all_species <- read_csv("Data/Biomarkers/FattyAcids/gradients2019_corespecies_FA
 all_algae <- all_species %>%
   filter(type == 'algae')
 
-# temporary fix: add species data to PLCA_10F0855_0078
-all_algae[87,9] <- 'Plocamium cartilagineum'
-
 # Create simplified long dataset for analysis of algae
 long_algae <- all_algae %>%
-  select(sample, batch, genusSpecies, `8:0`:`22:4w3`) %>%
+  select(FAsampleName, batch, genusSpecies, `8:0`:`22:4w3`) %>%
   pivot_longer(cols = `8:0`:`22:4w3`, names_to = 'FA', values_to = 'proportion')
 
 
@@ -105,7 +102,7 @@ long_algae <- all_algae %>%
 
  deme <- long_algae %>%
    filter(genusSpecies == "Desmarestia menziesii") %>%
-   mutate(site = str_sub(sample, 6, 7))
+   mutate(site = str_sub(FAsampleName, 6, 7))
 
 
  site <- c('02', '03', '04', '05', '07', '08', '09', '10', '11', '12', '13', '14', '15')
@@ -176,7 +173,7 @@ long_algae <- all_algae %>%
  
  # pivot data wide for PCA
  grad_conc_wide <- long_algae %>%
-   select(FA, genusSpecies, proportion, sample) %>%
+   select(FA, genusSpecies, proportion, FAsampleName) %>%
    pivot_wider(names_from = FA, values_from = proportion, values_fill = 0)
  # remove zero columns
  grad_conc_PCA <- grad_conc_wide %>%
