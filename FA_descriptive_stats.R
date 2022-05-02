@@ -98,7 +98,7 @@ long_algae <- all_algae %>%
 #   filter(projectID == "Gradients2019") %>%
 #   filter(!str_detect(sampleID, "Blank"))
 
-# 90/155 = 0.5806452 updated through batch 5
+# 106/155 = 0.683871 updated through batch 6
 
 
 ###### DEME only for gradient analysis
@@ -253,7 +253,7 @@ sub_wide <- grad_conc_wide %>% # fix 16:0 error in inverts
 sub_wide_trans <- (sub_wide[,3:12])
 sub_wide_trans <- bind_cols(sub_wide[1:2], sub_wide_trans)
 
-batch_1_2_MDS <- metaMDS(sub_wide_trans[3:12], autotransform = TRUE, distance = "canberra")
+batch_1_2_MDS <- metaMDS(sub_wide_trans[3:12], autotransform = TRUE, distance = "clark")
 batch_1_2_MDS_points <- batch_1_2_MDS$points
 batch_1_2_MDS_points <- data.frame(batch_1_2_MDS_points)
 plot_data_batch_1_2 <- data.frame(batch_1_2_MDS_points, sub_wide[,1])
