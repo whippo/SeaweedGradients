@@ -25,8 +25,11 @@
 
 # TO DO 
 
-# PLCA_10F0855_0078 is not in the metadata, but IS in the phonebook
 # need to fix ID update from Katrin SI values
+# Fix Ice Cover Cat values
+# Add letter ID for sites
+
+# 
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # TABLE OF CONTENTS                                                            ####
@@ -62,6 +65,8 @@ library(stringr)
 algae_raw <- read_csv("Data/Biomarkers/FattyAcids/core_algae_spp_final_concs.csv")
 invert_raw <- read_csv("Data/Biomarkers/FattyAcids/core_invert_proportions - Sheet1.csv")
 sample_metadata <- read_csv("Data/Biomarkers/FattyAcids/B-236_Fatty-Acid_Collections_QAQC.csv")
+site_cover <- read_csv("Data/Biomarkers/FattyAcids/site_cover.csv", 
+                       col_types = cols(SiteID = col_character()))
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # MANIPULATE DATA                                                              ####
@@ -80,6 +85,10 @@ sample_metadata_step1$ProjID <- sample_metadata_step1$ProjID %>%
          "12S1111" = "12F1111",
          "12S1112" = "12F1112")
 sample_metadata_step1[120,1] <- "03F0147"
+sample_metadata_step1[113,1] <- "03F0140"
+sample_metadata_step1[113,2] <- "3"
+sample_metadata_step1[702,1] <- "09F0724"
+sample_metadata_step1[702,2] <- "9"
 # Update phylogenetic labels
 sample_metadata_step1$genusSpecies <- sample_metadata_step1$genusSpecies %>%
   recode("Gigartina skottsbergii" = "Sarcopeltis antarctica",
@@ -271,6 +280,19 @@ joined_FA_step4 <- joined_FA_step3 %>%
 # drop reduntant vial number column
 joined_FA_step5 <- joined_FA_step4 %>%
   select(-FAvialNum.x)
+# add updated site and ice cover data
+joined_FA_step6 <- joined_FA_step5 %>%
+  left_join(site_cover, by = "SiteID")
+# rearranged and order columns for clarity
+joined_FA_step7 <- joined_FA_step6 %>%
+  relocate(LetterID:`NIC-Klein-Midpoint-Annual`, .after = SiteID) %>%
+  relocate(sample:batch, .after = LinkedTo) %>%
+  relocate(phylum:family, .after = genusSpecies) %>%
+  rename(FAsampleName = sample) %>%
+  rename(genus = Genus) %>%
+  arrange(ProjID)
+  
+
 
 # make sure all columns have been sorted and selected properly
 colnames(joined_FA_step5)
