@@ -82,7 +82,14 @@ long_algae <- all_algae %>%
   select(FAsampleName, batch, genusSpecies, `8:0`:`22:4w3`) %>%
   pivot_longer(cols = `8:0`:`22:4w3`, names_to = 'FA', values_to = 'proportion')
 
+# subset inverts
+all_inverts <- all_species %>%
+  filter(type == "invert")
 
+# Create simplified long dataset for analysis of inverts
+long_inverts <- all_inverts %>%
+  select(FAsampleName, SiteID, genusSpecies, `8:0`:`22:4w3`) %>%
+  pivot_longer(cols = `8:0`:`22:4w3`, names_to = 'FA', values_to = 'proportion')
   
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -179,7 +186,7 @@ long_algae <- all_algae %>%
  grad_conc_PCA <- grad_conc_wide %>%
    select(where(~ any(. != 0)))
  # run PCA
-PCA_results <-  prcomp(grad_conc_PCA[,c(3:63)], scale = TRUE)
+PCA_results <-  prcomp(grad_conc_PCA[,c(3:66)], scale = TRUE)
 PCA_results$rotation <- -1*PCA_results$rotation
 PCA_results$rotation
 #reverse the signs of the scores
@@ -291,7 +298,7 @@ ggplot(plot_data_batch_1_2, aes(x=MDS1, y=MDS2)) +
 
 # PAIRS PANELS OF FA
 
-# all gradients site joining
+# all gradients site joining ALGAE
 
 grad_site <- long_algae %>%
   mutate(site = str_sub(sample, 6, 7))
@@ -380,9 +387,6 @@ pairs.panels(all_site_reduced[,2:16])
 #     14:0 = 0.52
 
 
-
-
-
 # cluster analysis of FAs that are related
 FA_dist <- vegdist(t(sub_wide_trans[3:12]))
 FA_clust <- hclust(FA_dist, method="ward.D2") 
@@ -447,31 +451,115 @@ ggplot(filter(long_algae, FA %in% c("14:0", "16:0", "16:1w7c", "18:0", "18:1w7c"
   ylab("Species")
 
 
+## PAIRS PANEL INVERTS
+
+grad_site <- long_inverts 
+  
+grad_site$SiteID <- grad_site$SiteID %>%
+  recode('1' = '01',
+         '2' = '02',
+         '3' = '03',
+         '4' = '04',
+         '5' = '05',
+         '6' = '06',
+         '7' = '07',
+         '8' = '08',
+         '9' = '09',
+         '10' = '10',
+         '11' = '11',
+         '12' = '12',
+         '13' = '13',
+         '14' = '14',
+         '15' = '15')
+         
+
+# create site/lat, and add gradient - taken from NIC-Klein-Midpoint-Annual (email from Chuck)
+SiteID <- c('01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15')
+lat <- c(-65.94492, -67.5567, -68.1758, -68.6921, -67.5488, -66.87732, -66.0894, -65.5131, -65.1043, -64.9002, -64.7932, -64.7720, -66.0251, -64.7793, -65.2402)
+grad <- c('56.44898', '71.5102', '68.61224', '87.67347', '57.87755', '82.89796', '58.36735', '73.95918', '53.5102', '36.12245', '41.10204', '37.26531', '76.77551', '41.06122', '62.85714')
+
+site_lat <- data.frame(SiteID, lat, grad)
+
+all_site <- left_join(grad_site, site_lat, by = "SiteID")
+all_site$lat <- as.factor(all_site$lat)
+
+# pivot data wide for pairs
+all_site_wide <- all_site %>%
+  select(FA, genusSpecies, proportion, FAsampleName, SiteID, lat, grad) %>%
+  pivot_wider(names_from = FA, values_from = proportion, values_fill = 0)
+# remove zero columns
+all_site_pairs <- all_site_wide %>%
+  select(where(~ any(. != 0)))
+# create mean values
+all_site_means <- all_site_pairs %>%
+  select(-c('SiteID', 'FAsampleName')) %>%
+  group_by(genusSpecies, lat) %>%
+  summarise(across(everything(), mean))
 
 
+# reduce number of FAs
+all_site_reduced <- all_site_pairs %>% # switch between lat/grad for gradients here
+  select(genusSpecies, grad,'16:1w7c', '18:1w7c', '18:1w9c', '18:2w6c', '20:0', '20:4w6', '22:0') %>%
+  #filter(genusSpecies == 'Odontaster validus')
+  #filter(genusSpecies == 'Nacella concinna')
+  #filter(genusSpecies == 'Sterechinus neumayeri')
+  #filter(genusSpecies == 'Neosmilaster georgianus')
+  #filter(genusSpecies == 'Cnemidocarpa sp.')
+  #filter(genusSpecies == 'Isotealia antarctica')
+  #filter(genusSpecies == 'Perknaster fuscus')
+  #filter(genusSpecies == 'Margarella antarctica')
+  #filter(genusSpecies == 'Prostebbingia gracilis')
+  #filter(genusSpecies == 'Dendrilla membranosa')
+  filter(genusSpecies == 'Gondogeneia antarctica')
+pairs.panels(all_site_reduced[,2:9])
+
+
+# FAs of gradient interest (>|50| Pearson correlation [moderate or stronger]):
+# ('20:5w3', '18:4w3', '18:3w6', '18:3w3', '14:0', '16:0', '18:0',
+# '16:1w7c', '18:1w7c', '18:1w9c', '18:2w6c', '20:0', '20:4w6', '22:0')
+#
+## S. neumayeri
+#     20:4w6 = -0.50
+#     22:0 = -0.53
+## N. georgianus
+#     14:0 = 0.50
+## P. gracilis
+#     16:0 = 0.70
+#     22:0 = -0.77
+## D. membranosa
+#     18:4w3 = 0.77
+#     18:3w3 = 0.56
+#     14:0 = 0.65
+#     18:0 = -0.84
+#     16:1w7 = 0.72
+#     18:1w9  = 0.55
+#     18:2w6 = 0.53
+#     20:0 = -0.59
+#     20:4w6 = -0.54
+#     22:0 = -0.55
+## G. antarctica
+#     16:1w7 = -0.53
+#     18:3w6 = 0.68
+#     14:0 = 0.72
+## M. antarctica
+#     20:4w6 = -0.56
+# 
 
   ####
 #<<<<<<<<<<<<<<<<<<<<<<<<<<END OF SCRIPT>>>>>>>>>>>>>>>>>>>>>>>>#
 
 # SCRATCH PAD ####
+algal_grad <- grad_conc_wide %>%
+  select(genusSpecies, `NIC-Klein-Midpoint-Annual`, '14:0', '16:0', '16:1w7c', '18:0', '18:4w3c', '20:4w6', '20:5w3') %>%
+  filter(genusSpecies %in% c("Desmarestia menziesii", "Phyllophora antarctica", "Himantothallus grandifolius"))
+algal_grad_long <- algal_grad %>%
+  pivot_longer(cols = `14:0`:`20:5w3`, names_to = 'FA', values_to = 'proportion')
 
 
-# stacked barplot of percent contribution of each FA to total FA (trace)
-ggplot(filter(grad_conc, proportion > 0.01 & proportion < 0.1 & FA != '19:0') %>%
-         mutate(species = fct_reorder(species, proportion, sum, .desc = TRUE)), aes(x = proportion, y = species, fill = FA)) +
-  geom_col(position = "stack", color = "black") +
-  scale_fill_viridis(discrete = TRUE) +
-  labs(fill = "Fatty Acid") +
-  xlab("Proportion of Total FA Content") +
-  ylab("Species")
+algal_grad_long %>%
+  ggplot(aes(`NIC-Klein-Midpoint-Annual`, proportion)) +
+  geom_point() +
+  geom_smooth(method = 'lm') +
+  facet_wrap(FA ~ genusSpecies, scales = 'free', ncol = 3)
 
-# LIN, ALA, SDA, ARA, EPA
-ggplot(filter(final_concs, Name %in% c("c18.2n6c", "c18.3n3", "c18.4n3", "c20.4n6", "c20.5n3")), aes(x = Name, y = stand_conc, fill = species)) +
-  geom_col(position = "dodge") +
-  theme_classic() +
-  scale_fill_viridis(discrete = TRUE) +
-  scale_x_discrete(labels=c("c18.2n6c" = "LIN (c18.2n6c)", "c18.3n3" = "ALA (c18.3n3)",
-                            "c20.4n6" = "ARA (c20.4n6)", "c20.5n3" = "EPA (c20.5n3)")) +
-  labs(fill = "Species") +
-  xlab("Fatty Acid") +
-  ylab("Standardized Concentration (ng/ul)")
+
