@@ -23,6 +23,7 @@
 # FA_data_pipeline.R
 
 # TO DO 
+# REMOVE c19 from everything!!!! (and in Quarto too!)
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # TABLE OF CONTENTS                                                            ####
@@ -175,16 +176,28 @@ long_inverts <- all_inverts %>%
  
  
 ###### All algal species analyses
-
-# PCA
  
- # pivot data wide for PCA
+ # pivot data wide for multivariate
  grad_conc_wide <- long_algae %>%
    select(FA, genusSpecies, proportion, FAsampleName) %>%
    pivot_wider(names_from = FA, values_from = proportion, values_fill = 0)
  # remove zero columns
  grad_conc_PCA <- grad_conc_wide %>%
    select(where(~ any(. != 0)))
+ 
+ 
+ ### PERMANOVA 
+ 
+ # algal FA for adonis
+ FA_only <- grad_conc_PCA %>%
+   select(`8:0`:`18:3w1`)
+
+adonis(abs(FA_only) ~ genusSpecies, data = grad_conc_PCA, method = 'bray')
+
+# PCA
+ 
+
+
  # run PCA
 PCA_results <-  prcomp(grad_conc_PCA[,c(3:66)], scale = TRUE)
 PCA_results$rotation <- -1*PCA_results$rotation
