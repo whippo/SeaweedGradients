@@ -4,7 +4,6 @@ author: "CTELab"
 format: 
   revealjs:
     theme: night
-    code-fold: true
 editor: visual
 incremental: true
 ---
@@ -73,7 +72,7 @@ long_inverts <- all_inverts %>%
     -   13 sites
 
     -   7 species
-    
+
     -   
 
         ```{r}
@@ -81,7 +80,176 @@ long_inverts <- all_inverts %>%
         list(unique(all_algae$genusSpecies))
 
         ```
-    
+
+## Preliminary Results
+
+## FA Proportions - Algae
+
+```{r}
+
+# dotplot of final concentration by species by FA
+ggplot(filter(long_algae, FA %in% c("14:0", "16:0", "16:1w7c", "18:0", "18:1w7c", "18:3w3", "18:4w3c", "18:1w9c", "20:4w6", "20:5w3")), 
+       aes(x = FA, y = proportion, colour = genusSpecies)) +
+  geom_point(size = 4, position = position_jitter(width = .1)) +
+  geom_boxplot(data = long_algae %>% 
+                 filter(FA %in% c("14:0", "16:0", "16:1w7c", "18:0", "18:1w7c", "18:3w3", "18:4w3c", "18:1w9c", "20:4w6", "20:5w3")), 
+               aes(group = FA, y = proportion), color = "black", alpha = 0, show.legend = FALSE) +
+  theme_classic() +
+  scale_colour_viridis(discrete = TRUE, end = 0.9) +
+  labs(x = "Fatty Acid", y = "Proportion of Total Fatty Acids") +
+  scale_x_discrete(labels = c("14:0" = "MYR (14:0)",
+                              "16:0" = "PAL (16:0)", 
+                            "16:1w7c" = "PALO (16:1w7c)", 
+                            "18:0" = "STE (18:0)",
+                            "18:1w7c" = "VAC (18:1w7c)",
+                            "18:3w3" = "LIN (18:3w3)",
+                            "18:4w3c" = "SDA (18:4w3c)",
+                            "18:1w9c" = "OLE (18:1w9c)", 
+                            "20:4w6" = "ARA (20:4w6)", 
+                            "20:5w3" = "EPA (20:5w3)")) +
+  coord_flip()
+
+```
+
+## Mean FA Composition - Algae
+
+```{r}
+
+# stacked barplot of percent contribution of each FA to total FA (dominant)
+ggplot(filter(long_algae, FA %in% c("14:0", "16:0", "16:1w7c", "18:0", "18:1w7c", "18:3w3", "18:4w3c", "18:1w9c", "20:4w6", "20:5w3")) %>%
+         group_by(genusSpecies, FA) %>%
+         summarise(proportion = mean(proportion)) %>%
+         ungroup(),
+         aes(x = proportion, y = genusSpecies, fill = factor(FA, levels = c("14:0", "18:0", "16:1w7c", "18:1w7c", "18:3w3", "18:4w3c", "18:1w9c", "16:0", "20:5w3", "20:4w6")))) +
+  geom_col(position = "stack", color = "black") +
+  scale_fill_viridis(discrete = TRUE, option = "H") +
+  theme_classic() +
+  labs(fill = "Fatty Acid") +
+  xlab("Mean Proportion of Total Fatty Acids") +
+  ylab("Species")
+
+```
+
+## nMDS - Algae
+
+```{r, error = FALSE, warning = FALSE, message = FALSE}
+
+# select EPA, ARA, SDA, PAL, OLE, LIN, VAC, and dominant sats (16, 18) 
+sub_wide <- grad_conc_wide %>% # fix 16:0 error in inverts
+  select(genusSpecies, FAsampleName, "14:0", "16:0", "16:1w7c", "18:0", "18:1w7c", "18:3w3", "18:4w3c", "18:1w9c", "20:4w6", "20:5w3")
+sub_wide_trans <- (sub_wide[,3:12])
+sub_wide_trans <- bind_cols(sub_wide[1:2], sub_wide_trans)
+
+batch_1_2_MDS <- metaMDS(sub_wide_trans[3:12], autotransform = TRUE, distance = "clark", trace = FALSE)
+batch_1_2_MDS_points <- batch_1_2_MDS$points
+batch_1_2_MDS_points <- data.frame(batch_1_2_MDS_points)
+plot_data_batch_1_2 <- data.frame(batch_1_2_MDS_points, sub_wide[,1])
+
+plot_data_batch_1_2 %>%
+ggplot(aes(MDS1, MDS2, color = genusSpecies)) +
+  geom_point(size = 4) + # set size of points to whatever you want
+  scale_color_viridis(discrete = TRUE, end = 0.9, option = 'D') + # my favorite color-blind and b&w friendly palette, look at the viridis package for more details
+   geom_mark_hull(expand = unit(1, "mm"), radius = unit(1, "mm"), concavity = 5)  + # optional 'hulls' around points
+  theme_void()  # optional, I just like this theme
+
+```
+
+## PCA - Algae
+
+```{r, error = FALSE, warning = FALSE, message = FALSE}
+
+ # remove zero columns
+ grad_conc_PCA <- grad_conc_wide %>%
+   select(where(~ any(. != 0)))
+ # run PCA
+PCA_results <-  prcomp(grad_conc_PCA[,c(4:67)], scale = TRUE)
+PCA_results$rotation <- -1*PCA_results$rotation
+#reverse the signs of the scores
+PCA_results$x <- -1*PCA_results$x
+
+
+
+autoplot(PCA_results, data = grad_conc_PCA, colour = 'genusSpecies', 
+         size = 4,
+         loadings = TRUE, 
+         loadings.colour = 'grey', 
+         loadings.label = TRUE, 
+         loadings.label.size = 4) +
+  scale_color_viridis(discrete = TRUE) +
+  theme_minimal()
+
+
+```
+
+## FA Gradient - Algae
+
+```{r, fig.width=5.2, fig.height=7, fig.align='center'}
+
+algal_grad <- grad_conc_wide %>%
+  select(genusSpecies, `NIC-Klein-Midpoint-Annual`, '14:0', '16:0', '16:1w7c', '18:0', '18:4w3c', '20:4w6', '20:5w3') %>%
+  filter(genusSpecies %in% c("Desmarestia menziesii", "Phyllophora antarctica", "Himantothallus grandifolius"))
+algal_grad_long <- algal_grad %>%
+  pivot_longer(cols = `14:0`:`20:5w3`, names_to = 'FA', values_to = 'proportion')
+
+  
+algal_grad_long %>%
+  ggplot(aes(`NIC-Klein-Midpoint-Annual`, proportion)) +
+  geom_point() +
+  geom_smooth(method = 'lm') +
+  facet_grid(FA ~ genusSpecies, scales = 'free') +
+  theme_bw()
+  
+  
+
+```
+
+## FA Proportions - Inverts
+
+```{r}
+
+# dotplot of final concentration by species by FA
+ggplot(filter(long_inverts, FA %in% c("14:0", "16:0", "16:1w7c", "18:0", "18:1w7c", "18:3w3", "18:4w3c", "18:1w9c", "20:4w6", "20:5w3")), 
+       aes(x = FA, y = proportion, colour = genusSpecies)) +
+  geom_point(size = 1, position = position_jitter(width = .1)) +
+  geom_boxplot(data = long_inverts %>% 
+                 filter(FA %in% c("14:0", "16:0", "16:1w7c", "18:0", "18:1w7c", "18:3w3", "18:4w3c", "18:1w9c", "20:4w6", "20:5w3")), 
+               aes(group = FA, y = proportion), color = "black", alpha = 0, show.legend = FALSE) +
+  theme_classic() +
+  scale_colour_viridis(discrete = TRUE, end = 0.9, option = "C") +
+  labs(x = "Fatty Acid", y = "Proportion of Total Fatty Acids") +
+  scale_x_discrete(labels = c("14:0" = "MYR (14:0)",
+                              "16:0" = "PAL (16:0)", 
+                            "16:1w7c" = "PALO (16:1w7c)", 
+                            "18:0" = "STE (18:0)",
+                            "18:1w7c" = "VAC (18:1w7c)",
+                            "18:3w3" = "LIN (18:3w3)",
+                            "18:4w3c" = "SDA (18:4w3c)",
+                            "18:1w9c" = "OLE (18:1w9c)", 
+                            "20:4w6" = "ARA (20:4w6)", 
+                            "20:5w3" = "EPA (20:5w3)")) +
+  coord_flip()
+
+```
+
+## Mean FA Composition - Inverts
+
+```{r}
+
+# stacked barplot of percent contribution of each FA to total FA (dominant)
+ggplot(filter(long_inverts, FA %in% c("14:0", "16:0", "16:1w7c", "18:0", "18:1w7c", "18:3w3", "18:4w3c", "18:1w9c", "20:4w6", "20:5w3")) %>%
+         group_by(genusSpecies, FA) %>%
+         summarise(proportion = mean(proportion)) %>%
+         ungroup(),
+         aes(x = proportion, y = genusSpecies, fill = factor(FA, levels = c("14:0", "18:0", "16:1w7c", "18:1w7c", "18:3w3", "18:4w3c", "18:1w9c", "16:0", "20:5w3", "20:4w6")))) +
+  geom_col(position = "stack", color = "black") +
+  scale_fill_viridis(discrete = TRUE, option = "H") +
+  theme_classic() +
+  labs(fill = "Fatty Acid") +
+  xlab("Mean Proportion of Total Fatty Acids") +
+  ylab("Species")
+
+```
+
 ## nMDS - Inverts
 
 ```{r, error = FALSE, warning = FALSE, message = FALSE}
@@ -135,6 +303,7 @@ autoplot(PCA_results, data = grad_conc_PCA, colour = 'genusSpecies',
 
 
 ```
+
 ## FA Gradient - Inverts
 
 ```{r, fig.width=5.2, fig.height=7, fig.align='center'}
@@ -150,80 +319,21 @@ invert_grad_long %>%
   ggplot(aes(`NIC-Klein-Midpoint-Annual`, proportion)) +
   geom_point() +
   geom_smooth(method = 'lm') +
-  facet_grid(FA ~ genusSpecies, scales = 'free')
+  facet_grid(FA ~ genusSpecies, scales = 'free') +
+  theme_bw()
 
 
 ```
 
+## Next Steps
 
-## nMDS - Algae
+-   Finish algal chromatogram analysis (\~3 weeks)
 
-```{r, error = FALSE, warning = FALSE, message = FALSE}
+-   Continue exploratory analyses
 
-# select EPA, ARA, SDA, PAL, OLE, LIN, VAC, and dominant sats (16, 18) 
-sub_wide <- grad_conc_wide %>% # fix 16:0 error in inverts
-  select(genusSpecies, FAsampleName, "14:0", "16:0", "16:1w7c", "18:0", "18:1w7c", "18:3w3", "18:4w3c", "18:1w9c", "20:4w6", "20:5w3")
-sub_wide_trans <- (sub_wide[,3:12])
-sub_wide_trans <- bind_cols(sub_wide[1:2], sub_wide_trans)
+-   Choose strongest/most interesting detected patterns
 
-batch_1_2_MDS <- metaMDS(sub_wide_trans[3:12], autotransform = TRUE, distance = "clark", trace = FALSE)
-batch_1_2_MDS_points <- batch_1_2_MDS$points
-batch_1_2_MDS_points <- data.frame(batch_1_2_MDS_points)
-plot_data_batch_1_2 <- data.frame(batch_1_2_MDS_points, sub_wide[,1])
+-   PUBLISH!
 
-plot_data_batch_1_2 %>%
-ggplot(aes(MDS1, MDS2, color = genusSpecies)) +
-  geom_point(size = 2) + # set size of points to whatever you want
-  scale_color_viridis(discrete = TRUE, end = 0.9, option = 'D') + # my favorite color-blind and b&w friendly palette, look at the viridis package for more details
-   geom_mark_hull(expand = unit(1, "mm"), radius = unit(1, "mm"), concavity = 5)  + # optional 'hulls' around points
-  theme_void()  # optional, I just like this theme
+## 
 
-```
-
-## PCA - Algae
-
-```{r, error = FALSE, warning = FALSE, message = FALSE}
-
- # remove zero columns
- grad_conc_PCA <- grad_conc_wide %>%
-   select(where(~ any(. != 0)))
- # run PCA
-PCA_results <-  prcomp(grad_conc_PCA[,c(4:67)], scale = TRUE)
-PCA_results$rotation <- -1*PCA_results$rotation
-#reverse the signs of the scores
-PCA_results$x <- -1*PCA_results$x
-
-
-
-autoplot(PCA_results, data = grad_conc_PCA, colour = 'genusSpecies', 
-         size = 4,
-         loadings = TRUE, 
-         loadings.colour = 'grey', 
-         loadings.label = TRUE, 
-         loadings.label.size = 4) +
-  scale_color_viridis(discrete = TRUE) +
-  theme_minimal()
-
-
-```
-
-## FA Gradient - Algae
-
-```{r, fig.width=5.2, fig.height=7, fig.align='center'}
-
-algal_grad <- grad_conc_wide %>%
-  select(genusSpecies, `NIC-Klein-Midpoint-Annual`, '14:0', '16:0', '16:1w7c', '18:0', '18:4w3c', '20:4w6', '20:5w3') %>%
-  filter(genusSpecies %in% c("Desmarestia menziesii", "Phyllophora antarctica", "Himantothallus grandifolius"))
-algal_grad_long <- algal_grad %>%
-  pivot_longer(cols = `14:0`:`20:5w3`, names_to = 'FA', values_to = 'proportion')
-
-  
-algal_grad_long %>%
-  ggplot(aes(`NIC-Klein-Midpoint-Annual`, proportion)) +
-  geom_point() +
-  geom_smooth(method = 'lm') +
-  facet_grid(FA ~ genusSpecies, scales = 'free')
-  
-  
-
-```

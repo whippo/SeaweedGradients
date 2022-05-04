@@ -509,8 +509,8 @@ all_site_reduced <- all_site_pairs %>% # switch between lat/grad for gradients h
   #filter(genusSpecies == 'Perknaster fuscus')
   #filter(genusSpecies == 'Margarella antarctica')
   #filter(genusSpecies == 'Prostebbingia gracilis')
-  #filter(genusSpecies == 'Dendrilla membranosa')
-  filter(genusSpecies == 'Gondogeneia antarctica')
+  filter(genusSpecies == 'Dendrilla membranosa')
+  #filter(genusSpecies == 'Gondogeneia antarctica')
 pairs.panels(all_site_reduced[,2:9])
 
 
