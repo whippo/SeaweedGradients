@@ -62,13 +62,15 @@ library(ggfortify) # PCA visualizations
 # READ IN AND PREPARE DATA                                                     ####
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-
 # Read in batch log for list of all samples in core analysis
 # Need to be connected to Dropbox to access 
 # LINUX
 Whippo_FA_extraction_log <- read_csv("~/Dropbox/OSF/Fatty Acid Extractions/Whippo_FA_extraction_log.csv") #linux
 # WINDOWS
 Whippo_FA_extraction_log <- read_csv("C:/Users/rossw/Dropbox/OSF/Fatty Acid Extractions/Whippo_FA_extraction_log.csv") #windows
+
+# read in metadata to count all samples
+collections <- read_csv("Data/Biomarkers/FattyAcids/B-236_Fatty-Acid_Collections_QAQC.csv")
 
 
 # Read in all core species from data pipeline
@@ -104,6 +106,23 @@ long_inverts <- all_inverts %>%
 #   filter(!str_detect(sampleID, "Blank"))
 
 # 106/155 = 0.683871 updated through batch 6
+
+
+
+# total reps algae per site table:
+
+# pull out letter and site ID to join with metadata
+lettersite <- all_species %>%
+  select(SiteID, LetterID)
+
+
+sample_counts_algae <- collections %>%
+  select(genusSpecies, class, LetterID) %>%
+  group_by(class, genusSpecies, LetterID) %>%
+  count(genusSpecies)
+
+sample_algae_wide <- sample_counts_algae %>%
+  pivot_wider(genusSpecies, names_from = 'LetterID', values_from = 'n')
 
 
 ###### DEME only for gradient analysis

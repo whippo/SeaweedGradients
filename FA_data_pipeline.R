@@ -302,14 +302,20 @@ joined_FA_step7 <- joined_FA_step6 %>%
   rename(genus = Genus) %>%
   arrange(ProjID)
   
-
+# fix typos
+joined_FA_step8 <- joined_FA_step7
+joined_FA_step8$Tissue <- joined_FA_step8$Tissue %>%
+  recode("rube feet" = "tube foot",
+         "tube feet" = "tube foot",
+         "tube foot section" = "tube foot")
+  
 
 # make sure all columns have been sorted and selected properly
-colnames(joined_FA_step7)
+colnames(joined_FA_step8)
 
 
 # save final joined FA dataset with different name
-gradients2019_corespecies_FA_QAQC <- joined_FA_step7
+gradients2019_corespecies_FA_QAQC <- joined_FA_step8
 
 # write .csv with current joined data
 write_csv(gradients2019_corespecies_FA_QAQC, "Data/Biomarkers/FattyAcids/gradients2019_corespecies_FA_QAQC.csv")
