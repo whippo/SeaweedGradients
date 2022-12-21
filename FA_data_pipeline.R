@@ -324,3 +324,11 @@ write_csv(gradients2019_corespecies_FA_QAQC, "Data/Biomarkers/FattyAcids/gradien
 #<<<<<<<<<<<<<<<<<<<<<<<<<<END OF SCRIPT>>>>>>>>>>>>>>>>>>>>>>>>#
 
 # SCRATCH PAD ####
+
+# temp script to extract list of every species and rep count per site
+species_list <- gradients2019_corespecies_FA_QAQC %>%
+  select(LetterID, genusSpecies, phylum, Replicate) %>%
+  distinct() %>%
+  group_by(genusSpecies, LetterID, phylum) %>%
+  top_n(1, abs(Replicate)) %>%
+  arrange(LetterID, phylum)
