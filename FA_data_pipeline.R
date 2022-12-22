@@ -308,6 +308,8 @@ joined_FA_step8$Tissue <- joined_FA_step8$Tissue %>%
   recode("rube feet" = "tube foot",
          "tube feet" = "tube foot",
          "tube foot section" = "tube foot")
+joined_FA_step8$phylum <- joined_FA_step8$phylum %>%
+  recode("rhodophtya" = "rhodophyta")
   
 
 # make sure all columns have been sorted and selected properly

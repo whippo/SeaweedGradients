@@ -114,9 +114,14 @@ long_inverts <- all_inverts %>%
 # pull out letter and site ID to join with metadata
 lettersite <- all_species %>%
   select(SiteID, LetterID)
+lettersite <- lettersite %>%
+  mutate(SiteID = as.character(SiteID))
+
+collections_01 <- collections %>%
+  left_join(lettersite, by = "SiteID")
 
 
-sample_counts_algae <- collections %>%
+sample_counts_algae <- collections_01 %>%
   select(genusSpecies, class, LetterID) %>%
   group_by(class, genusSpecies, LetterID) %>%
   count(genusSpecies)
@@ -276,16 +281,16 @@ PCA_results$x %>%
  
 
 
-# MDS
+# MDS ALGAE
 
 # pivot data wide for mds
 grad_conc_wide <- long_algae %>%
-  select(FA, genusSpecies, proportion, sample) %>%
+  select(FA, genusSpecies, proportion, FAsampleName) %>%
   pivot_wider(names_from = FA, values_from = proportion, values_fill = 0)
 
 # select EPA, ARA, SDA, PAL, OLE, LIN, VAC, and dominant sats (16, 18) 
 sub_wide <- grad_conc_wide %>% # fix 16:0 error in inverts
-  select(genusSpecies, sample, "14:0", "16:0", "16:1w7c", "18:0", "18:1w7c", "18:3w3", "18:4w3c", "18:1w9c", "20:4w6", "20:5w3")
+  select(genusSpecies, FAsampleName, "14:0", "16:0", "16:1w7c", "18:0", "18:1w7c", "18:3w3", "18:4w3c", "18:1w9c", "20:4w6", "20:5w3")
 sub_wide_trans <- (sub_wide[,3:12])
 sub_wide_trans <- bind_cols(sub_wide[1:2], sub_wide_trans)
 
@@ -312,19 +317,86 @@ spp.scrs <- spp.scrs %>%
   rename(MDS1 = NMDS1,
          MDS2 = NMDS2)
 
+# MDS FOR ITRS - Aaron
+
 ggplot(plot_data_batch_1_2, aes(x=MDS1, y=MDS2)) +
   coord_fixed() +
   geom_point(size = 4, aes(color = genusSpecies)) + # set size of points to whatever you want
-  scale_color_viridis(discrete = TRUE, end = 0.9) + # my favorite color-blind and b&w friendly palette, look at the viridis package for more details
-  geom_segment(data = spp.scrs,
-               aes(x = 0, xend = MDS1, y = 0, yend = MDS2),
-               arrow = arrow(length = unit(0.25, "cm")), color = "grey") +
-  geom_text(data = spp.scrs, aes(label = FA), 
-            size = 3) +
-  geom_polygon(data = chulls_tax,
-               aes(x = MDS1, y = MDS2, color = genusSpecies), 
-               fill = NA) + # optional 'hulls' around points
-  theme_classic()  # optional, I just like this theme
+  scale_color_viridis(discrete = TRUE, end = 0.9, name = "Algal Species") + # my favorite color-blind and b&w friendly palette, look at the viridis package for more details
+  # geom_segment(data = spp.scrs,
+    #            aes(x = 0, xend = MDS1, y = 0, yend = MDS2),
+    #            arrow = arrow(length = unit(0.25, "cm")), color = "grey") +
+  # geom_text(data = spp.scrs, aes(label = FA), 
+    #         size = 3) +
+  # geom_polygon(data = chulls_tax,
+    #            aes(x = MDS1, y = MDS2, color = genusSpecies), 
+    #            fill = NA) + # optional 'hulls' around points
+  theme_classic() + # optional, I just like this theme
+  annotate("text", x = 1, y = 1, label = "3D Stress = 0.17") 
+
+
+
+# MDS INVERTS
+
+# pivot data wide for mds
+grad_conc_wide_invert <- long_inverts %>%
+  select(FA, genusSpecies, proportion, FAsampleName) %>%
+  pivot_wider(names_from = FA, values_from = proportion, values_fill = 0)
+
+# select EPA, ARA, SDA, PAL, OLE, LIN, VAC, and dominant sats (16, 18), reduce inverts included
+sub_wide_invert <- grad_conc_wide_invert %>% # fix 16:0 error in inverts
+  select(genusSpecies, FAsampleName, "14:0", "16:0", "16:1w7c", "18:0", "18:1w7c", "18:3w3", "18:1w9c", "20:4w6", "20:5w3")
+sub_wide_invert <- sub_wide_invert %>%
+  filter(genusSpecies %in% c("Odontaster validus", 
+                             "Cnemidocarpa sp.",
+                             "Nacella concinna",
+                             "Sterechinus neumayeri",
+                             "Prostebbingia gracilis",
+                             "Gondogeneia antarctica"))
+sub_wide_trans_invert <- (sub_wide_invert[,3:11])
+sub_wide_trans_invert <- bind_cols(sub_wide_invert[1:2], sub_wide_trans_invert)
+
+
+batch_1_2_MDS_invert <- metaMDS(sqrt(sub_wide_trans_invert[3:11]), autotransform = TRUE, distance = "manhattan")
+batch_1_2_MDS_points_invert <- batch_1_2_MDS_invert$points
+batch_1_2_MDS_points_invert <- data.frame(batch_1_2_MDS_points_invert)
+plot_data_batch_1_2_invert <- data.frame(batch_1_2_MDS_points_invert, sub_wide_invert[,1])
+
+library(plyr)
+# create the list of points that will connect the 'hulls' together from your nMDS point data
+chulls_tax_invert <- ddply(plot_data_batch_1_2_invert, .(genusSpecies), function(df) df[chull(df$MDS1, df$MDS2), ])
+# DETACH PLYR so it won't mess with anything!
+detach(package:plyr)
+
+# create vectors to plot over MDS
+scrs_invert <- as.data.frame(scores(batch_1_2_MDS_invert, display = "sites"))
+scrs_invert <- cbind(scrs_invert, genusSpecies = sub_wide_trans_invert$genusSpecies)
+
+vf_invert <- envfit(batch_1_2_MDS_invert, sub_wide_trans_invert[3:11], perm = 999)
+
+spp.scrs_invert <- as.data.frame(scores(vf_invert, display = "vectors"))
+spp.scrs_invert <- cbind(spp.scrs_invert, FA = rownames(spp.scrs_invert))
+spp.scrs_invert <- spp.scrs_invert %>%
+  rename(MDS1 = NMDS1,
+         MDS2 = NMDS2)
+
+# MDS FOR ITRS - Aaron
+
+ggplot(plot_data_batch_1_2_invert, aes(x=MDS1, y=MDS2)) +
+  coord_fixed() +
+  geom_point(size = 4, aes(color = genusSpecies)) + # set size of points to whatever you want
+  scale_color_viridis(discrete = TRUE, end = 0.9, name = "Invert Species") + # my favorite color-blind and b&w friendly palette, look at the viridis package for more details
+  # geom_segment(data = spp.scrs_invert,
+   #           aes(x = 0, xend = MDS1, y = 0, yend = MDS2),
+    #          arrow = arrow(length = unit(0.25, "cm")), color = "grey") +
+   # geom_text(data = spp.scrs_invert, aes(label = FA), 
+     #      size = 3) +
+   # geom_polygon(data = chulls_tax_invert,
+    #          aes(x = MDS1, y = MDS2, color = genusSpecies), 
+     #         fill = NA) + # optional 'hulls' around points
+  theme_classic() + # optional, I just like this theme
+  annotate("text", x = -8, y = -9, label = "3D Stress = 0.08") 
+
 
 
 
