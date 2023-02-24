@@ -343,7 +343,7 @@ grad_conc_wide_invert <- long_inverts %>%
   select(FA, genusSpecies, proportion, FAsampleName) %>%
   pivot_wider(names_from = FA, values_from = proportion, values_fill = 0)
 
-# select EPA, ARA, SDA, PAL, OLE, LIN, VAC, and dominant sats (16, 18), reduce inverts included
+# select EPA, ARA, PAL, OLE, LIN, VAC, and dominant sats (16, 18), reduce inverts included
 sub_wide_invert <- grad_conc_wide_invert %>% # fix 16:0 error in inverts
   select(genusSpecies, FAsampleName, "14:0", "16:0", "16:1w7c", "18:0", "18:1w7c", "18:3w3", "18:1w9c", "20:4w6", "20:5w3")
 sub_wide_invert <- sub_wide_invert %>%
@@ -395,9 +395,53 @@ ggplot(plot_data_batch_1_2_invert, aes(x=MDS1, y=MDS2)) +
     #          aes(x = MDS1, y = MDS2, color = genusSpecies), 
      #         fill = NA) + # optional 'hulls' around points
   theme_classic() + # optional, I just like this theme
+  annotate("text", x = -8, y = -9, label = "3D Stress = 0.08")  
+
+# INVERT MDS w/ ICE COVER
+
+site_sample_invert <- all_inverts %>%
+  select(SiteID, FAsampleName, `NIC-Klein-Midpoint-Annual`)
+
+invert_cover <- sub_wide_invert %>%
+  left_join(site_sample_invert, by = "FAsampleName")
+
+plot_data_batch_1_2_invert <- data.frame(batch_1_2_MDS_points_invert, invert_cover[,c(1,13)])
+
+library(plyr)
+# create the list of points that will connect the 'hulls' together from your nMDS point data
+chulls_tax_invert <- ddply(plot_data_batch_1_2_invert, .(`NIC.Klein.Midpoint.Annual`), function(df) df[chull(df$MDS1, df$MDS2), ])
+# DETACH PLYR so it won't mess with anything!
+detach(package:plyr)
+
+# create vectors to plot over MDS
+scrs_invert <- as.data.frame(scores(batch_1_2_MDS_invert, display = "sites"))
+scrs_invert <- cbind(scrs_invert, IceCover = invert_cover$`NIC-Klein-Midpoint-Annual`)
+
+vf_invert <- envfit(batch_1_2_MDS_invert, sub_wide_trans_invert[3:11], perm = 999)
+
+spp.scrs_invert <- as.data.frame(scores(vf_invert, display = "vectors"))
+spp.scrs_invert <- cbind(spp.scrs_invert, FA = rownames(spp.scrs_invert))
+spp.scrs_invert <- spp.scrs_invert %>%
+  rename(MDS1 = NMDS1,
+         MDS2 = NMDS2)
+
+# plot_data_batch_1_2_invert$NIC.Klein.Midpoint.Annual <- as.character(plot_data_batch_1_2_invert$NIC.Klein.Midpoint.Annual)
+  
+
+ggplot(plot_data_batch_1_2_invert, aes(x=MDS1, y=MDS2)) +
+  coord_fixed() +
+  geom_point(size = 4, aes(color = `NIC.Klein.Midpoint.Annual`)) + # set size of points to whatever you want
+  scale_color_viridis(discrete = FALSE, end = 0.9, name = "Ice Cover") + # my favorite color-blind and b&w friendly palette, look at the viridis package for more details
+  #geom_segment(data = spp.scrs_invert,
+  #           aes(x = 0, xend = MDS1, y = 0, yend = MDS2),
+  #          arrow = arrow(length = unit(0.25, "cm")), color = "grey") +
+  # geom_text(data = spp.scrs_invert, aes(label = FA), 
+  #      size = 3) +
+  # geom_polygon(data = chulls_tax_invert,
+  #          aes(x = MDS1, y = MDS2, color = genusSpecies), 
+  #         fill = NA) + # optional 'hulls' around points
+  theme_classic() + # optional, I just like this theme
   annotate("text", x = -8, y = -9, label = "3D Stress = 0.08") 
-
-
 
 
 # PAIRS PANELS OF FA
