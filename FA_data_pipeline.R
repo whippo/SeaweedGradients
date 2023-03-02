@@ -28,6 +28,8 @@
 # need to fix ID update from Katrin SI values
 # Fix Ice Cover Cat values
 # Add letter ID for sites
+# Need to recalculate proportions using ONLY standard-FA for algae samples 
+# for batches 1-7.
 
 # 
 
@@ -52,6 +54,7 @@
 # 2022-05-02  Corrected additional mislabeled samples, rearranged columns
 # 2023-02-24  Reran with all core algae through batch 7
 # 2023-02-27  Reran with all core algae through batch 8
+# 2023-03-01  Reran with all core algae through batch 9
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # LOAD PACKAGES                                                                ####
