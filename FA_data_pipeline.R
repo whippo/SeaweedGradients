@@ -339,3 +339,20 @@ species_list <- gradients2019_corespecies_FA_QAQC %>%
   group_by(genusSpecies, LetterID, phylum) %>%
   top_n(1, abs(Replicate)) %>%
   arrange(LetterID, phylum)
+
+# temp script to copy to bsides script extracting full list of algae used in bsides MS
+bside_algae_list <- read_csv("Data/Biomarkers/FattyAcids/bside_algae_list.csv")
+
+# join code list with species and collection attributes
+bside_algae_list <- bside_algae_list %>%
+  rename("ProjID" = "code")
+bside_full <- left_join(bside_algae_list, sample_metadata_step2, by = "ProjID") %>%
+  ungroup() %>%
+  arrange(genusSpecies)
+
+write_csv(bside_full, "bside_full_list.csv")
+
+
+
+
+
