@@ -57,6 +57,7 @@ library(stringr)
 bsides_FA <- read_csv("Data/Biomarkers/FattyAcids/bside_algae_spp_final_concs.csv")
 bsides_SI <- read_csv("Data/Biomarkers/SI/bside_full_list_KI.csv") %>%
   drop_na(ProjID)
+core_FA <- read_csv("Data/Biomarkers/FattyAcids/gradients2019_corespecies_FA_QAQC.csv")
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # MANIPULATE DATA                                                              ####
@@ -69,7 +70,6 @@ bsides_SI <- read_csv("Data/Biomarkers/SI/bside_full_list_KI.csv") %>%
 FA_step1 <- bsides_FA %>% 
   mutate(ProjID = str_extract(`sample`, '(?<=_).*?(?=_)')) %>%
   pivot_wider(names_from = FA, values_from = proportion, values_fill = 0)
-
 
 
 # PREPARE SI DATASET WITH METADATA FOR JOINING
@@ -94,6 +94,50 @@ full_step1 <- SI_step1 %>%
 
 # make sure all columns have been sorted and selected properly
 colnames(full_step1)
+
+# separate out my FA sample names w/ Katrin's sample IDs
+species <- full_step1 %>%
+  select(`ProjID`, `genusSpecies...9`, `genusSpecies...35`, `sample`, `CN ratio`, `8:0`)
+
+# which samples do I have that Katrin doesn't?
+FA_noSI <- full_step1 %>%
+  select(`genusSpecies...35`, `sample`) %>%
+  filter(`genusSpecies...35` =="n/a") %>%
+  select(`sample`)
+
+
+
+# which samples does Katrin have that I don't?
+SI_noFA <- full_step1 %>%
+  select(`ProjID`, `genusSpecies...35`, `sample`) %>%
+  filter(is.na(`sample`)) %>%
+  select(`ProjID`, `genusSpecies...35`)
+
+# use this list of SI that is not in my bsides to search my core for those samples
+
+FAbsides_additions <- SI_noFA %>%
+  select(ProjID) %>%
+  left_join(core_FA, by = "ProjID") %>%
+  select(ProjID, FAsampleName, batch, `8:0`:`22:4w3`)
+
+full_step2 <- full_step1 %>%
+  full_join(FAbsides_additions, by = intersect("ProjID")) %>%
+  group_by(ProjID) %>%
+  summarize_all(na.omit)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # save final joined FA dataset with different name
