@@ -4,7 +4,7 @@
 # Script Created 2023-03-17                                                      ##
 # Data source: Antarctic Gradients 2019                                          ##
 # R code prepared by Ross Whippo                                                 ##
-# Last updated 2023-03-17                                                        ##
+# Last updated 2023-03-21                                                        ##
 #                                                                                ##
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -82,8 +82,13 @@ SI_step1 <- bsides_SI
 # JOIN DATASETS
 
 # find differences in column names between FA and SI (in first vector, not in second)
-setdiff(FA_step1$ProjID, SI_step1$ProjID)
-setdiff(SI_step1$ProjID, FA_step1$ProjID)
+diffSI <- SI_step1 %>%
+  select(ProjID, `CN ratio`) %>%
+  filter(!is.na(`CN ratio`))
+FA_noSI <- as_tibble(setdiff(FA_step1$ProjID, diffSI$ProjID))
+names(FA_noSI) <- "ProjID"
+SI_noFA <- as_tibble(setdiff(diffSI$ProjID, FA_step1$ProjID))
+names(SI_noFA) <- "ProjID"
 
 
 # join FA and SI data with metadata by ProjID column
@@ -119,6 +124,14 @@ FAbsides_additions <- SI_noFA %>%
   select(ProjID) %>%
   left_join(core_FA, by = "ProjID") %>%
   select(ProjID, FAsampleName, batch, `8:0`:`22:4w3`)
+
+
+
+
+
+
+
+
 
 full_step2 <- full_step1 %>%
   full_join(FAbsides_additions, by = intersect("ProjID")) %>%
