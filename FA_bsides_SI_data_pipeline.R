@@ -120,14 +120,19 @@ full_step3 <- full_step2 %>%
          Date, Transect, Depth.m, Replicate, Tissue, VialAmount, batch:type,
          `Latitude (dec)`:`Ice cover (NIC-Midpoint-Annual)`, 
          `CN ratio`:d13C, `8:0`:`18:1nX`) %>%
-  filter(!is.na(revisedSpecies) | revisedSpecies == "eliminate b/c uncertain ID")
+  filter(!is.na(revisedSpecies))
 # remove all FA columns that are zero
 full_step4 <- full_step3 %>%
   select_if(~ !is.numeric(.) || sum(., na.rm = TRUE) != 0)
-
+# fix species typo and uncertain ID
+full_step5 <- full_step4 %>% 
+  mutate(revisedSpecies = case_when(
+    revisedSpecies == "Myriogramme mangini" ~ "Myriogramme manginii", TRUE ~ revisedSpecies)) %>%
+  filter(revisedSpecies != "eliminate b/c uncertain ID")
+  
 
 # save final joined FA dataset with different name
-gradients2019_bsides_FASI_QAQC <- full_step4
+gradients2019_bsides_FASI_QAQC <- full_step5
 
 # write .csv with current joined data
 write_csv(gradients2019_bsides_FASI_QAQC, "Data/Biomarkers/FattyAcids/gradients2019_bsides_FASI_QAQC.csv")
