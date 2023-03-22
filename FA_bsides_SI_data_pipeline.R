@@ -116,7 +116,7 @@ full_step2 <- full_step1 %>%
                               SiteID == "XX" ~ "XX"))
 # reduce to required columns for analysis and delete comment lines
 full_step3 <- full_step2 %>%
-  select(ProjID, sample, `SI-ID`, LinkedTo, Comments, siteName, revisedSpecies, 
+  select(ProjID, sample, `SI-ID`, LinkedTo, Comments, siteName, revisedSpecies, phylum,
          Date, Transect, Depth.m, Replicate, Tissue, VialAmount, batch:type,
          `Latitude (dec)`:`Ice cover (NIC-Midpoint-Annual)`, 
          `CN ratio`:d13C, `8:0`:`18:1nX`) %>%
@@ -129,10 +129,12 @@ full_step5 <- full_step4 %>%
   mutate(revisedSpecies = case_when(
     revisedSpecies == "Myriogramme mangini" ~ "Myriogramme manginii", TRUE ~ revisedSpecies)) %>%
   filter(revisedSpecies != "eliminate b/c uncertain ID")
-  
+# fill in missing phylum values (currently only Rhodophyta, check before changing this code)
+full_step6 <- full_step5 %>%
+  mutate(phylum = replace_na(phylum, "Rhodophyta"))
 
 # save final joined FA dataset with different name
-gradients2019_bsides_FASI_QAQC <- full_step5
+gradients2019_bsides_FASI_QAQC <- full_step6
 
 # write .csv with current joined data
 write_csv(gradients2019_bsides_FASI_QAQC, "Data/Biomarkers/FattyAcids/gradients2019_bsides_FASI_QAQC.csv")

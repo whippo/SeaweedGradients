@@ -23,7 +23,13 @@
 # FA_bsides_SI_data_pipeline.R
 
 # TO DO 
-# 
+# 1. Combine ggplot PCA plot with vectors  
+# 2. Run PERMANOVA and PCA for SI and FA separately
+#     - samples in common
+#     - FA with additional samples
+#     - 'All' samples
+# 3. Fill in all values in paper table for FA and SI
+# 4. Create PCA labeling phylum instead of species (or shapes)
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # TABLE OF CONTENTS                                                            ####
@@ -71,6 +77,11 @@ long_species <- all_species %>%
 overlap_species <- all_species %>%
   filter(targetFA == "standards", !is.na(`CN ratio`)) %>%
   select_if(~ !is.numeric(.) || sum(., na.rm = TRUE) != 0)
+
+# SI only wide dataset
+SI_wide <- all_species %>%
+  filter(!is.na(`CN ratio`))
+
   
 
 
@@ -82,7 +93,7 @@ overlap_species <- all_species %>%
 
 
 
-###### All algal species analyses
+###### OVERLAPPING SAMPLES
 
 
 
@@ -98,7 +109,61 @@ adonis(abs(marker_only) ~ revisedSpecies, data = overlap_species, method = 'bray
 
 
 # run PCA
-PCA_results <-  prcomp(overlap_species[,c(20:63)], scale = TRUE)
+PCA_results <-  prcomp(overlap_species[,c(21:64)], scale = TRUE)
+PCA_results$rotation <- -1*PCA_results$rotation
+PCA_results$rotation
+#reverse the signs of the scores
+PCA_results$x <- -1*PCA_results$x
+#display the first six scores
+head(PCA_results$x)
+
+# plot how much variance
+plot(PCA_results)
+
+# calc variance explained
+var_explained <- PCA_results$sdev^2/sum(PCA_results$sdev^2)
+
+# duplicate main dataset to add shape value for taxonomic grouping
+# overlap_PCAfig <- overlap_species %>%
+#   mutate(shape = case_when(phylum == "Chlorophyta" ~ "1",
+#                            phylum == "Ochrophyta" ~ "2",
+#                            phylum == "Rhodophyta" ~ "6"))
+
+# biplot of 2 most important axes
+PCA_results$x %>% 
+  as.data.frame %>%
+  ggplot(aes(x=PC1,y=PC2)) + geom_point(aes(color = overlap_species$revisedSpecies,
+                                            shape = overlap_species$phylum),size=4) +
+  geom_text(
+    label=overlap_species$ProjID,
+    nudge_x=2, nudge_y=1,
+    check_overlap=F
+  ) +
+  theme_minimal() +
+  scale_color_viridis(discrete = TRUE) +
+  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
+       y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
+
+# Run PCA plot with vectors
+autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
+
+
+
+###### SI VALUES ONLY
+
+### PERMANOVA 
+
+# algal SI for adonis
+SI_only <- SI_wide %>%
+  select(`CN ratio`:d13C)
+
+adonis(abs(SI_only) ~ revisedSpecies, data = SI_wide, method = 'bray', na.rm = TRUE)
+
+# PCA
+
+
+# run PCA
+PCA_results <-  prcomp(SI_wide[,c(21:23)], scale = TRUE)
 PCA_results$rotation <- -1*PCA_results$rotation
 PCA_results$rotation
 #reverse the signs of the scores
@@ -115,19 +180,145 @@ var_explained <- PCA_results$sdev^2/sum(PCA_results$sdev^2)
 # biplot of 2 most important axes
 PCA_results$x %>% 
   as.data.frame %>%
-  ggplot(aes(x=PC1,y=PC2)) + geom_point(aes(color=overlap_species$revisedSpecies),size=4) +
-#  geom_text(
-#    label=overlap_species$revisedSpecies,
-#    nudge_x=2, nudge_y=1,
-#    check_overlap=T
-#  ) +
+  ggplot(aes(x=PC1,y=PC2)) + geom_point(aes(color = SI_wide$revisedSpecies,
+                                            shape = SI_wide$phylum),size=4) +
+  #  geom_text(
+  #    label=SI_wide$revisedSpecies,
+  #    nudge_x=2, nudge_y=1,
+  #    check_overlap=T
+  #  ) +
   theme_minimal() +
   scale_color_viridis(discrete = TRUE) +
   labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
        y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
 
+# Run PCA plot with vectors
 autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
 
+
+
+###### FA VALUES ONLY
+
+
+
+### PERMANOVA 
+
+# algal FA for adonis
+FA_only <- all_species %>%
+  select(`8:0`:`20:4`) 
+
+adonis(abs(FA_only) ~ revisedSpecies, data = all_species, method = 'bray', na.rm = TRUE)
+
+# PCA
+
+
+# run PCA
+PCA_results <-  prcomp(all_species[,c(24:72)], scale = TRUE)
+PCA_results$rotation <- -1*PCA_results$rotation
+PCA_results$rotation
+#reverse the signs of the scores
+PCA_results$x <- -1*PCA_results$x
+#display the first six scores
+head(PCA_results$x)
+
+# plot how much variance
+plot(PCA_results)
+
+# calc variance explained
+var_explained <- PCA_results$sdev^2/sum(PCA_results$sdev^2)
+
+# duplicate main dataset to add shape value for taxonomic grouping
+# overlap_PCAfig <- overlap_species %>%
+#   mutate(shape = case_when(phylum == "Chlorophyta" ~ "1",
+#                            phylum == "Ochrophyta" ~ "2",
+#                            phylum == "Rhodophyta" ~ "6"))
+
+# biplot of 2 most important axes
+PCA_results$x %>% 
+  as.data.frame %>%
+  ggplot(aes(x=PC1,y=PC2)) + geom_point(aes(color = all_species$revisedSpecies,
+                                            shape = all_species$phylum),size=4) +
+  geom_text(
+      label=all_species$ProjID,
+      nudge_x=2, nudge_y=1,
+      check_overlap=T
+    ) +
+  theme_minimal() +
+  scale_color_viridis(discrete = TRUE) +
+  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
+       y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
+
+# Run PCA plot with vectors
+autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
+
+
+
+
+
+###### TESTING MINIMAL FA BY LOOKING AT VECTORS IN PCA (16:0, 16:1w7c, 18:2w6c)
+
+### PERMANOVA 
+
+# algal min FA for adonis
+minFA_only <- overlap_species %>%
+  select(`16:0`, `16:1w7c`, `18:2w6c`) 
+
+adonis(abs(minFA_only) ~ revisedSpecies, data = overlap_species, method = 'bray', na.rm = TRUE)
+
+# PCA
+
+
+# run PCA
+PCA_results <-  prcomp(overlap_species[,c(35, 36, 42)], scale = TRUE)
+PCA_results$rotation <- -1*PCA_results$rotation
+PCA_results$rotation
+#reverse the signs of the scores
+PCA_results$x <- -1*PCA_results$x
+#display the first six scores
+head(PCA_results$x)
+
+# plot how much variance
+plot(PCA_results)
+
+# calc variance explained
+var_explained <- PCA_results$sdev^2/sum(PCA_results$sdev^2)
+
+# biplot of 2 most important axes
+PCA_results$x %>% 
+  as.data.frame %>%
+  ggplot(aes(x=PC1,y=PC2)) + geom_point(aes(color = overlap_species$revisedSpecies,
+                                            shape = overlap_species$phylum),size=4) +
+  #  geom_text(
+  #    label=SI_wide$revisedSpecies,
+  #    nudge_x=2, nudge_y=1,
+  #    check_overlap=T
+  #  ) +
+  theme_minimal() +
+  scale_color_viridis(discrete = TRUE) +
+  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
+       y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
+
+# Run PCA plot with vectors
+autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
+
+
+
+####
+#<<<<<<<<<<<<<<<<<<<<<<<<<<END OF SCRIPT>>>>>>>>>>>>>>>>>>>>>>>>#
+
+# SCRATCH PAD ####
+algal_grad <- grad_conc_wide %>%
+  select(genusSpecies, `NIC-Klein-Midpoint-Annual`, '14:0', '16:0', '16:1w7c', '18:0', '18:4w3c', '20:4w6', '20:5w3') %>%
+  filter(genusSpecies %in% c("Desmarestia menziesii", "Phyllophora antarctica", "Himantothallus grandifolius"))
+algal_grad_long <- algal_grad %>%
+  pivot_longer(cols = `14:0`:`20:5w3`, names_to = 'FA', values_to = 'proportion')
+
+
+algal_grad_long %>%
+  ggplot(aes(`NIC-Klein-Midpoint-Annual`, proportion)) +
+  geom_point() +
+  geom_smooth(method = 'lm') +
+  facet_wrap(FA ~ genusSpecies, scales = 'free', ncol = 3)
 
 
 
@@ -539,21 +730,5 @@ pairs.panels(all_site_reduced[,2:9])
 #     20:4w6 = -0.56
 # 
 
-####
-#<<<<<<<<<<<<<<<<<<<<<<<<<<END OF SCRIPT>>>>>>>>>>>>>>>>>>>>>>>>#
-
-# SCRATCH PAD ####
-algal_grad <- grad_conc_wide %>%
-  select(genusSpecies, `NIC-Klein-Midpoint-Annual`, '14:0', '16:0', '16:1w7c', '18:0', '18:4w3c', '20:4w6', '20:5w3') %>%
-  filter(genusSpecies %in% c("Desmarestia menziesii", "Phyllophora antarctica", "Himantothallus grandifolius"))
-algal_grad_long <- algal_grad %>%
-  pivot_longer(cols = `14:0`:`20:5w3`, names_to = 'FA', values_to = 'proportion')
-
-
-algal_grad_long %>%
-  ggplot(aes(`NIC-Klein-Midpoint-Annual`, proportion)) +
-  geom_point() +
-  geom_smooth(method = 'lm') +
-  facet_wrap(FA ~ genusSpecies, scales = 'free', ncol = 3)
 
 
