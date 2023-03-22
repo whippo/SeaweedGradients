@@ -41,6 +41,7 @@
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 # 2023-03-17 Script created
+# 2023-03-21 First complete working pipeline completed, may need to finesse
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # LOAD PACKAGES                                                                ####
@@ -94,70 +95,45 @@ names(SI_noFA) <- "ProjID"
 # join FA and SI data with metadata by ProjID column
 full_step1 <- SI_step1 %>%
   left_join(FA_step1, by = "ProjID")
-
-
-
-# make sure all columns have been sorted and selected properly
-colnames(full_step1)
-
-# separate out my FA sample names w/ Katrin's sample IDs
-species <- full_step1 %>%
-  select(`ProjID`, `genusSpecies...9`, `genusSpecies...35`, `sample`, `CN ratio`, `8:0`)
-
-# which samples do I have that Katrin doesn't?
-FA_noSI <- full_step1 %>%
-  select(`genusSpecies...35`, `sample`) %>%
-  filter(`genusSpecies...35` =="n/a") %>%
-  select(`sample`)
-
-
-
-# which samples does Katrin have that I don't?
-SI_noFA <- full_step1 %>%
-  select(`ProjID`, `genusSpecies...35`, `sample`) %>%
-  filter(is.na(`sample`)) %>%
-  select(`ProjID`, `genusSpecies...35`)
-
-# use this list of SI that is not in my bsides to search my core for those samples
-
-FAbsides_additions <- SI_noFA %>%
-  select(ProjID) %>%
-  left_join(core_FA, by = "ProjID") %>%
-  select(ProjID, FAsampleName, batch, `8:0`:`22:4w3`)
-
-
-
-
-
-
-
-
-
+# update species names to most current values and all site names
 full_step2 <- full_step1 %>%
-  full_join(FAbsides_additions, by = intersect("ProjID")) %>%
-  group_by(ProjID) %>%
-  summarize_all(na.omit)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  mutate(revisedSpecies = coalesce(`REVISED NAME`, genusSpecies...9, genusSpecies...36)) %>%
+  mutate(siteName = case_when(SiteID == "12" ~ "A",
+                              SiteID == "14" ~ "B",
+                              SiteID == "11" ~ "C",
+                              SiteID == "10" ~ "D",
+                              SiteID == "9" ~ "E",
+                              SiteID == "15" ~ "F",
+                              SiteID == "8" ~ "G",
+                              SiteID == "1" ~ "H",
+                              SiteID == "13" ~ "I",
+                              SiteID == "7" ~ "J",
+                              SiteID == "6" ~ "K",
+                              SiteID == "5" ~ "L",
+                              SiteID == "3" ~ "M",
+                              SiteID == "4" ~ "N",
+                              SiteID == "2" ~ "X",
+                              SiteID == "XX" ~ "XX"))
+# reduce to required columns for analysis and delete comment lines
+full_step3 <- full_step2 %>%
+  select(ProjID, sample, `SI-ID`, LinkedTo, Comments, siteName, revisedSpecies, 
+         Date, Transect, Depth.m, Replicate, Tissue, VialAmount, batch:type,
+         `Latitude (dec)`:`Ice cover (NIC-Midpoint-Annual)`, 
+         `CN ratio`:d13C, `8:0`:`18:1nX`) %>%
+  filter(!is.na(revisedSpecies) | revisedSpecies == "eliminate b/c uncertain ID")
+# remove all FA columns that are zero
+full_step4 <- full_step3 %>%
+  select_if(~ !is.numeric(.) || sum(., na.rm = TRUE) != 0)
 
 
 # save final joined FA dataset with different name
-gradients2019_bsides_FA-SI_QAQC <- full_step1
+gradients2019_bsides_FASI_QAQC <- full_step4
 
 # write .csv with current joined data
-write_csv(gradients2019_bsides_FA-SI_QAQC, "Data/Biomarkers/FattyAcids/gradients2019_bsides_FA-SI_QAQC.csv")
+write_csv(gradients2019_bsides_FASI_QAQC, "Data/Biomarkers/FattyAcids/gradients2019_bsides_FASI_QAQC.csv")
+  
+
+
 
 ####
 #<<<<<<<<<<<<<<<<<<<<<<<<<<END OF SCRIPT>>>>>>>>>>>>>>>>>>>>>>>>#
@@ -183,6 +159,53 @@ bside_full <- left_join(bside_algae_list, sample_metadata_step2, by = "ProjID") 
   arrange(genusSpecies)
 
 write_csv(bside_full, "bside_full_list.csv")
+
+
+
+
+# make sure all columns have been sorted and selected properly
+colnames(full_step1)
+
+# separate out my FA sample names w/ Katrin's sample IDs
+species <- full_step1 %>%
+  select(`ProjID`, `genusSpecies...9`, `genusSpecies...36`, `sample`,`REVISED NAME`, `CN ratio`, `8:0`)
+# attempt to merge columns so proper species names are retained
+species$genusSpecies...36 <- na_if(species$genusSpecies...36, "n/a")
+species1 <- species %>% 
+  mutate(revisedSpecies = coalesce(`REVISED NAME`, genusSpecies...9, genusSpecies...36))
+
+
+
+# which samples do I have that Katrin doesn't?
+FA_noSI <- full_step1 %>%
+  select(`genusSpecies...35`, `sample`) %>%
+  filter(`genusSpecies...35` =="n/a") %>%
+  select(`sample`)
+
+
+
+# which samples does Katrin have that I don't?
+SI_noFA <- full_step1 %>%
+  select(`ProjID`, `genusSpecies...35`, `sample`) %>%
+  filter(is.na(`sample`)) %>%
+  select(`ProjID`, `genusSpecies...35`)
+
+# use this list of SI that is not in my bsides to search my core for those samples
+
+FAbsides_additions <- SI_noFA %>%
+  select(ProjID) %>%
+  left_join(core_FA, by = "ProjID") %>%
+  select(ProjID, FAsampleName, batch, `8:0`:`22:4w3`)
+
+
+
+full_step2 <- full_step1 %>%
+  full_join(FAbsides_additions, by = intersect("ProjID")) %>%
+  group_by(ProjID) %>%
+  summarize_all(na.omit)
+
+
+
 
 
 
