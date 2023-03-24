@@ -62,16 +62,18 @@ library(ggfortify) # PCA visualizations
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
-# Read in all core species from data pipeline
-all_species <- read_csv("Data/Biomarkers/FattyAcids/gradients2019_bsides_FASI_QAQC.csv")
-
+# Read in all core species from data pipeline and remove duplicated 'all' FA
+FASI_QAQC <- read_csv("Data/Biomarkers/FattyAcids/gradients2019_bsides_FASI_QAQC.csv")
+all_species <- FASI_QAQC %>%
+  filter(targetFA == "standards") %>%
+  select_if(~ !is.numeric(.) || sum(., na.rm = TRUE) != 0)
 
 # Create simplified long dataset for analysis, remove non-overlapping samples
 long_species <- all_species %>%
   select(ProjID, siteName, revisedSpecies, `Ice cover (NIC-Midpoint-Annual)`,
-         targetFA, `CN ratio`:`20:4`) %>%
+         targetFA, `CN ratio`:`24:1w9`) %>%
   filter(targetFA == "standards", !is.na(`CN ratio`)) %>%
-  pivot_longer(cols = `CN ratio`:`20:4`, names_to = 'marker', values_to = 'value')
+  pivot_longer(cols = `CN ratio`:`24:1w9`, names_to = 'marker', values_to = 'value')
 
 # create wide dataset, remove non-overlapping samples
 overlap_species <- all_species %>%
@@ -134,11 +136,11 @@ PCA_results$x %>%
   as.data.frame %>%
   ggplot(aes(x=PC1,y=PC2)) + geom_point(aes(color = overlap_species$revisedSpecies,
                                             shape = overlap_species$phylum),size=4) +
-  geom_text(
-    label=overlap_species$ProjID,
-    nudge_x=2, nudge_y=1,
-    check_overlap=F
-  ) +
+#  geom_text(
+#    label=overlap_species$ProjID,
+#    nudge_x=2, nudge_y=1,
+#    check_overlap=F
+#  ) +
   theme_minimal() +
   scale_color_viridis(discrete = TRUE) +
   labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
@@ -205,7 +207,7 @@ autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.siz
 
 # algal FA for adonis
 FA_only <- all_species %>%
-  select(`8:0`:`20:4`) 
+  select(`8:0`:`24:1w9`) 
 
 adonis(abs(FA_only) ~ revisedSpecies, data = all_species, method = 'bray', na.rm = TRUE)
 
@@ -213,7 +215,7 @@ adonis(abs(FA_only) ~ revisedSpecies, data = all_species, method = 'bray', na.rm
 
 
 # run PCA
-PCA_results <-  prcomp(all_species[,c(24:72)], scale = TRUE)
+PCA_results <-  prcomp(all_species[,c(24:64)], scale = TRUE)
 PCA_results$rotation <- -1*PCA_results$rotation
 PCA_results$rotation
 #reverse the signs of the scores
@@ -239,7 +241,7 @@ PCA_results$x %>%
   ggplot(aes(x=PC1,y=PC2)) + geom_point(aes(color = all_species$revisedSpecies,
                                             shape = all_species$phylum),size=4) +
   geom_text(
-      label=all_species$ProjID,
+      label=all_species$revisedSpecies,
       nudge_x=2, nudge_y=1,
       check_overlap=T
     ) +
