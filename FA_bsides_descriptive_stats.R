@@ -105,49 +105,46 @@ SI_wide <- all_species %>%
 marker_only <- overlap_species %>%
   select(`CN ratio`:`24:1w9`) 
 
-adonis(abs(marker_only) ~ revisedSpecies, data = overlap_species, method = 'bray', na.rm = TRUE)
-
-# PCA
-
+adonis2(abs(marker_only) ~ revisedSpecies, data = overlap_species, method = 'bray', na.rm = TRUE)
 
 # run PCA
-PCA_results <-  prcomp(overlap_species[,c(21:63)], scale = TRUE)
-PCA_results$rotation <- -1*PCA_results$rotation
-PCA_results$rotation
-#reverse the signs of the scores
-PCA_results$x <- -1*PCA_results$x
-#display the first six scores
-head(PCA_results$x)
-
-# plot how much variance
-plot(PCA_results)
-
-# calc variance explained
-var_explained <- PCA_results$sdev^2/sum(PCA_results$sdev^2)
-
-# duplicate main dataset to add shape value for taxonomic grouping
-# overlap_PCAfig <- overlap_species %>%
-#   mutate(shape = case_when(phylum == "Chlorophyta" ~ "1",
-#                            phylum == "Ochrophyta" ~ "2",
-#                            phylum == "Rhodophyta" ~ "6"))
-
-# biplot of 2 most important axes
-PCA_results$x %>% 
-  as.data.frame %>%
-  ggplot(aes(x=PC1,y=PC2)) + geom_point(aes(color = overlap_species$revisedSpecies,
-                                            shape = overlap_species$phylum),size=4) +
-#  geom_text(
-#    label=overlap_species$ProjID,
-#    nudge_x=2, nudge_y=1,
-#    check_overlap=F
-#  ) +
-  theme_minimal() +
-  scale_color_viridis(discrete = TRUE) +
-  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
-       y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
-
-# Run PCA plot with vectors
+PCA_results <-  rda(overlap_species[,c(21:63)], scale = TRUE)
+# check that axes are above the mean (per Numerical Ecology)
+ev <- PCA_results$CA$eig
+ev>mean(ev)
+# proportion explained
+barplot(ev, main="eigenvalues", col="bisque", las=2)
+abline(h=mean(ev), col="red")
+legend("topright", "Average eignenvalue", lwd=1, col=2)
+# testing different scalings (1 = good for samples/sites, 2 = good for correlations)
+biplot(PCA_results, scaling=1, main="PCA scaling 1") # scaling 1 for distances between objects
+biplot(PCA_results, main="PCA scaling 2") # correlation biplot, for seeing correlation between response variables (species) see angles. 
 autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
+
+
+# extract PCA coordinates
+uscores <- data.frame(PCA_results$CA$u)
+uscores1 <- inner_join(rownames_to_column(overlap_species), rownames_to_column(data.frame(uscores)), by = "rowname")
+vscores <- data.frame(PCA_results$CA$v)
+# extract explanatory percentages
+PCA_summary <- summary(PCA_results)
+PCA_import <- as.data.frame(PCA_summary[["cont"]][["importance"]])
+var_explained <- PCA_import[2, 1:2]
+
+# make final ggplot figure
+ggplot(uscores1) + 
+  scale_fill_viridis(discrete = TRUE) +
+  scale_color_viridis(discrete = TRUE) +
+  geom_text(data = vscores, aes(x = PC1, y = PC2, label = rownames(vscores)), col = 'red') +
+  geom_segment(data = vscores, aes(x = 0, y = 0, xend = PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
+               alpha = 0.75, color = 'grey30') +
+  geom_point(aes(x = PC1, y = PC2, fill = revisedSpecies, color = revisedSpecies,
+                 shape = phylum), size = 4) +
+  theme_bw() +
+  theme(strip.text.y = element_text(angle = 0)) +
+  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
+     y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
+
 
 
 
@@ -159,43 +156,45 @@ autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.siz
 SI_only <- SI_wide %>%
   select(`CN ratio`:d13C)
 
-adonis(abs(SI_only) ~ revisedSpecies, data = SI_wide, method = 'bray', na.rm = TRUE)
-
-# PCA
-
+adonis2(abs(SI_only) ~ revisedSpecies, data = SI_wide, method = 'bray', na.rm = TRUE)
 
 # run PCA
-PCA_results <-  prcomp(SI_wide[,c(21:23)], scale = TRUE)
-PCA_results$rotation <- -1*PCA_results$rotation
-PCA_results$rotation
-#reverse the signs of the scores
-PCA_results$x <- -1*PCA_results$x
-#display the first six scores
-head(PCA_results$x)
+PCA_results <-  rda(SI_wide[,c(21:23)], scale = TRUE)
+# check that axes are above the mean (per Numerical Ecology)
+ev <- PCA_results$CA$eig
+ev>mean(ev)
+# proportion explained
+barplot(ev, main="eigenvalues", col="bisque", las=2)
+abline(h=mean(ev), col="red")
+legend("topright", "Average eignenvalue", lwd=1, col=2)
+# testing different scalings (1 = good for samples/sites, 2 = good for correlations)
+biplot(PCA_results, scaling=1, main="PCA scaling 1") # scaling 1 for distances between objects
+biplot(PCA_results, main="PCA scaling 2") # correlation biplot, for seeing correlation between response variables (species) see angles. 
+autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
 
-# plot how much variance
-plot(PCA_results)
 
-# calc variance explained
-var_explained <- PCA_results$sdev^2/sum(PCA_results$sdev^2)
+# extract PCA coordinates
+uscores <- data.frame(PCA_results$CA$u)
+uscores1 <- inner_join(rownames_to_column(SI_wide), rownames_to_column(data.frame(uscores)), by = "rowname")
+vscores <- data.frame(PCA_results$CA$v)
+# extract explanatory percentages
+PCA_summary <- summary(PCA_results)
+PCA_import <- as.data.frame(PCA_summary[["cont"]][["importance"]])
+var_explained <- PCA_import[2, 1:2]
 
-# biplot of 2 most important axes
-PCA_results$x %>% 
-  as.data.frame %>%
-  ggplot(aes(x=PC1,y=PC2)) + geom_point(aes(color = SI_wide$revisedSpecies,
-                                            shape = SI_wide$phylum),size=4) +
-  #  geom_text(
-  #    label=SI_wide$revisedSpecies,
-  #    nudge_x=2, nudge_y=1,
-  #    check_overlap=T
-  #  ) +
-  theme_minimal() +
+# make final ggplot figure
+ggplot(uscores1) + 
+  scale_fill_viridis(discrete = TRUE) +
   scale_color_viridis(discrete = TRUE) +
+  geom_text(data = vscores, aes(x = PC1, y = PC2, label = rownames(vscores)), col = 'red') +
+  geom_segment(data = vscores, aes(x = 0, y = 0, xend = PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
+               alpha = 0.75, color = 'grey30') +
+  geom_point(aes(x = PC1, y = PC2, fill = revisedSpecies, color = revisedSpecies,
+                 shape = phylum), size = 4) +
+  theme_bw() +
+  theme(strip.text.y = element_text(angle = 0)) +
   labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
        y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
-
-# Run PCA plot with vectors
-autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
 
 
 
@@ -209,51 +208,53 @@ autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.siz
 FA_only <- all_species %>%
   select(`8:0`:`24:1w9`) 
 
-adonis(abs(FA_only) ~ revisedSpecies, data = all_species, method = 'bray', na.rm = TRUE)
+adonis2(abs(FA_only) ~ revisedSpecies, data = all_species, method = 'bray', na.rm = TRUE)
 
 # PCA
 
 
 # run PCA
-PCA_results <-  prcomp(all_species[,c(24:63)], scale = TRUE)
-PCA_results$rotation <- -1*PCA_results$rotation
-PCA_results$rotation
-#reverse the signs of the scores
-PCA_results$x <- -1*PCA_results$x
-#display the first six scores
-head(PCA_results$x)
-
-# plot how much variance
-plot(PCA_results)
-
-# calc variance explained
-var_explained <- PCA_results$sdev^2/sum(PCA_results$sdev^2)
-
-# duplicate main dataset to add shape value for taxonomic grouping
-# overlap_PCAfig <- overlap_species %>%
-#   mutate(shape = case_when(phylum == "Chlorophyta" ~ "1",
-#                            phylum == "Ochrophyta" ~ "2",
-#                            phylum == "Rhodophyta" ~ "6"))
-
-# biplot of 2 most important axes
-PCA_results$x %>% 
-  as.data.frame %>%
-  ggplot(aes(x=PC1,y=PC2)) + geom_point(aes(color = all_species$revisedSpecies,
-                                            shape = all_species$phylum),size=4) +
-#  geom_text(
-#      label=all_species$revisedSpecies,
-#      nudge_x=2, nudge_y=1,
-#      check_overlap=T
-#    ) +
-  theme_minimal() +
-  scale_color_viridis(discrete = TRUE) +
-  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
-       y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
-
-# Run PCA plot with vectors
+PCA_results <-  rda(all_species[,c(24:63)], scale = TRUE)
+# check that axes are above the mean (per Numerical Ecology)
+ev <- PCA_results$CA$eig
+ev>mean(ev)
+# proportion explained
+barplot(ev, main="eigenvalues", col="bisque", las=2)
+abline(h=mean(ev), col="red")
+legend("topright", "Average eignenvalue", lwd=1, col=2)
+# testing different scalings (1 = good for samples/sites, 2 = good for correlations)
+biplot(PCA_results, scaling=1, main="PCA scaling 1") # scaling 1 for distances between objects
+biplot(PCA_results, main="PCA scaling 2") # correlation biplot, for seeing correlation between response variables (species) see angles. 
 autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
 
 
+# extract PCA coordinates
+uscores <- data.frame(PCA_results$CA$u)
+uscores1 <- inner_join(rownames_to_column(all_species), rownames_to_column(data.frame(uscores)), by = "rowname")
+vscores <- data.frame(PCA_results$CA$v)
+# extract explanatory percentages
+PCA_summary <- summary(PCA_results)
+PCA_import <- as.data.frame(PCA_summary[["cont"]][["importance"]])
+var_explained <- PCA_import[2, 1:2]
+
+# make final ggplot figure
+ggplot(uscores1) + 
+  scale_fill_viridis(discrete = TRUE) +
+  scale_color_viridis(discrete = TRUE) +
+  geom_text(data = vscores, aes(x = PC1, y = PC2, label = rownames(vscores)), col = 'red') +
+  geom_segment(data = vscores, aes(x = 0, y = 0, xend = PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
+               alpha = 0.75, color = 'grey30') +
+  geom_point(aes(x = PC1, y = PC2, fill = revisedSpecies, color = revisedSpecies,
+                 shape = phylum), size = 4) +
+ #   geom_text(
+#      aes(x = PC1, y = PC2),
+#      label=uscores1$revisedSpecies,
+#      check_overlap=T
+#    ) +
+  theme_bw() +
+  theme(strip.text.y = element_text(angle = 0)) +
+  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
+       y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
 
 
 
@@ -265,45 +266,51 @@ autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.siz
 minFA_only <- overlap_species %>%
   select(`16:0`, `16:1w7c`, `18:2w6c`) 
 
-adonis(abs(minFA_only) ~ revisedSpecies, data = overlap_species, method = 'bray', na.rm = TRUE)
-
-# PCA
+adonis2(abs(minFA_only) ~ revisedSpecies, data = overlap_species, method = 'bray', na.rm = TRUE)
 
 
 # run PCA
-PCA_results <-  prcomp(overlap_species[,c(35, 36, 42)], scale = TRUE)
-PCA_results$rotation <- -1*PCA_results$rotation
-PCA_results$rotation
-#reverse the signs of the scores
-PCA_results$x <- -1*PCA_results$x
-#display the first six scores
-head(PCA_results$x)
-
-# plot how much variance
-plot(PCA_results)
-
-# calc variance explained
-var_explained <- PCA_results$sdev^2/sum(PCA_results$sdev^2)
-
-# biplot of 2 most important axes
-PCA_results$x %>% 
-  as.data.frame %>%
-  ggplot(aes(x=PC1,y=PC2)) + geom_point(aes(color = overlap_species$revisedSpecies,
-                                            shape = overlap_species$phylum),size=4) +
-  #  geom_text(
-  #    label=SI_wide$revisedSpecies,
-  #    nudge_x=2, nudge_y=1,
-  #    check_overlap=T
-  #  ) +
-  theme_minimal() +
-  scale_color_viridis(discrete = TRUE) +
-  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
-       y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
-
-# Run PCA plot with vectors
+PCA_results <-  rda(minFA_only, scale = TRUE)
+# check that axes are above the mean (per Numerical Ecology)
+ev <- PCA_results$CA$eig
+ev>mean(ev)
+# proportion explained
+barplot(ev, main="eigenvalues", col="bisque", las=2)
+abline(h=mean(ev), col="red")
+legend("topright", "Average eignenvalue", lwd=1, col=2)
+# testing different scalings (1 = good for samples/sites, 2 = good for correlations)
+biplot(PCA_results, scaling=1, main="PCA scaling 1") # scaling 1 for distances between objects
+biplot(PCA_results, main="PCA scaling 2") # correlation biplot, for seeing correlation between response variables (species) see angles. 
 autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
 
 
+# extract PCA coordinates
+uscores <- data.frame(PCA_results$CA$u)
+uscores1 <- inner_join(rownames_to_column(overlap_species), rownames_to_column(data.frame(uscores)), by = "rowname")
+vscores <- data.frame(PCA_results$CA$v)
+# extract explanatory percentages
+PCA_summary <- summary(PCA_results)
+PCA_import <- as.data.frame(PCA_summary[["cont"]][["importance"]])
+var_explained <- PCA_import[2, 1:2]
+
+# make final ggplot figure (scale on points changed to highlight spp differences)
+ggplot(uscores1) + 
+  scale_fill_viridis(discrete = TRUE) +
+  scale_color_viridis(discrete = TRUE) +
+  geom_text(data = vscores, aes(x = PC1, y = PC2, label = rownames(vscores)), col = 'red') +
+  geom_segment(data = vscores, aes(x = 0, y = 0, xend = PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
+               alpha = 0.75, color = 'grey30') +
+  geom_point(aes(x = PC1*2, y = PC2*2, fill = revisedSpecies, color = revisedSpecies,
+                 shape = phylum), size = 4) +
+ #   geom_text(
+#      aes(x = PC1, y = PC2),
+#      label=uscores1$revisedSpecies,
+#      check_overlap=T
+#    ) +
+  theme_bw() +
+  theme(strip.text.y = element_text(angle = 0)) +
+  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
+       y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
 
 ####
 #<<<<<<<<<<<<<<<<<<<<<<<<<<END OF SCRIPT>>>>>>>>>>>>>>>>>>>>>>>>#
