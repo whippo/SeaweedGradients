@@ -94,10 +94,9 @@ names(SI_noFA) <- "ProjID"
 
 # join FA and SI data with metadata by ProjID column
 full_step1 <- SI_step1 %>%
-  left_join(FA_step1, by = "ProjID")
+  full_join(FA_step1, by = "ProjID")
 # update species names to most current values and all site names
 full_step2 <- full_step1 %>%
-  mutate(revisedSpecies = coalesce(`REVISED NAME`, genusSpecies...9, genusSpecies...36)) %>%
   mutate(siteName = case_when(SiteID == "12" ~ "A",
                               SiteID == "14" ~ "B",
                               SiteID == "11" ~ "C",
@@ -113,7 +112,19 @@ full_step2 <- full_step1 %>%
                               SiteID == "3" ~ "M",
                               SiteID == "4" ~ "N",
                               SiteID == "2" ~ "X",
-                              SiteID == "XX" ~ "XX"))
+                              SiteID == "XX" ~ "XX",
+                              sample == "IRCO_09F0739_0101" ~ "E",
+                              sample == "IRCO_11F1030_0076" ~ "C",
+                              sample == "IRCO_13F1251_0094" ~ "I",
+                              sample == "PHAN_13F1231_0150" ~ "I",
+                              sample == "PHAN_13F1230_0143" ~ "I")) %>%
+  mutate(coreadditions = case_when(sample == "IRCO_09F0739_0101" ~ "Iridaea cordata",
+                                   sample == "IRCO_11F1030_0076" ~ "Iridaea cordata",
+                                   sample == "IRCO_13F1251_0094" ~ "Iridaea cordata",
+                                   sample == "PHAN_13F1231_0150" ~ "Callophyllis atrosanguinea",
+                                   sample == "PHAN_13F1230_0143" ~ "Callophyllis atrosanguinea",
+                                   sample == "DEAP_08F0624_0190" ~ "Desmarestia menziesii")) %>%
+  mutate(revisedSpecies = coalesce(coreadditions, `REVISED NAME`, genusSpecies...9, genusSpecies...36))
 # reduce to required columns for analysis and delete comment lines
 full_step3 <- full_step2 %>%
   select(ProjID, sample, `SI-ID`, LinkedTo, Comments, siteName, revisedSpecies, phylum,
@@ -133,19 +144,75 @@ full_step5 <- full_step4 %>%
 full_step6 <- full_step5 %>%
   mutate(phylum = replace_na(phylum, "Rhodophyta"))
 
-# save final joined FA dataset with different name
-gradients2019_bsides_FASI_QAQC <- full_step6
+# save final joined FA dataset with different name (contains duplicates all versus standards)
+gradients2019_bsides_DUPES_FASI_QAQC <- full_step6
 
 # write .csv with current joined data
-write_csv(gradients2019_bsides_FASI_QAQC, "Data/Biomarkers/FattyAcids/gradients2019_bsides_FASI_QAQC.csv")
-  
+write_csv(gradients2019_bsides_DUPES_FASI_QAQC, "Data/Biomarkers/FattyAcids/gradients2019_bsides_DUPES_FASI_QAQC.csv")
 
+# save dataset without duplicates (remove 'all' targetFA)
+full_step7 <- full_step6 %>%
+  filter(targetFA == "standards")
+
+# save final joined FA dataset with different name
+gradients2019_bsides_FASI_QAQC <- full_step7
+  
+# write .csv with current joined data
+write_csv(gradients2019_bsides_FASI_QAQC, "Data/Biomarkers/FattyAcids/gradients2019_bsides_FASI_QAQC.csv")
 
 
 ####
 #<<<<<<<<<<<<<<<<<<<<<<<<<<END OF SCRIPT>>>>>>>>>>>>>>>>>>>>>>>>#
 
 # SCRATCH PAD ####
+
+
+
+
+# fix species typo and uncertain ID
+full_step5 <- full_step4 %>% 
+  mutate(revisedSpecies = case_when(
+    revisedSpecies == "Myriogramme mangini" ~ "Myriogramme manginii", TRUE ~ revisedSpecies)) %>%
+  filter(revisedSpecies != "eliminate b/c uncertain ID")
+# fill in missing phylum values (currently only Rhodophyta, check before changing this code)
+full_step6 <- full_step5 %>%
+  mutate(phylum = replace_na(phylum, "Rhodophyta"))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+library(janitor)
+dupes <- full_step6 %>%
+  get_dupes(ProjID)
+
+
+
+
+
+
+
+
 
 # temp script to extract list of every species and rep count per site
 species_list <- gradients2019_corespecies_FA_QAQC %>%

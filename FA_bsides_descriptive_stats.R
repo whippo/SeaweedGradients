@@ -111,7 +111,7 @@ adonis(abs(marker_only) ~ revisedSpecies, data = overlap_species, method = 'bray
 
 
 # run PCA
-PCA_results <-  prcomp(overlap_species[,c(21:64)], scale = TRUE)
+PCA_results <-  prcomp(overlap_species[,c(21:63)], scale = TRUE)
 PCA_results$rotation <- -1*PCA_results$rotation
 PCA_results$rotation
 #reverse the signs of the scores
@@ -215,7 +215,7 @@ adonis(abs(FA_only) ~ revisedSpecies, data = all_species, method = 'bray', na.rm
 
 
 # run PCA
-PCA_results <-  prcomp(all_species[,c(24:64)], scale = TRUE)
+PCA_results <-  prcomp(all_species[,c(24:63)], scale = TRUE)
 PCA_results$rotation <- -1*PCA_results$rotation
 PCA_results$rotation
 #reverse the signs of the scores
@@ -240,11 +240,11 @@ PCA_results$x %>%
   as.data.frame %>%
   ggplot(aes(x=PC1,y=PC2)) + geom_point(aes(color = all_species$revisedSpecies,
                                             shape = all_species$phylum),size=4) +
-  geom_text(
-      label=all_species$revisedSpecies,
-      nudge_x=2, nudge_y=1,
-      check_overlap=T
-    ) +
+#  geom_text(
+#      label=all_species$revisedSpecies,
+#      nudge_x=2, nudge_y=1,
+#      check_overlap=T
+#    ) +
   theme_minimal() +
   scale_color_viridis(discrete = TRUE) +
   labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
