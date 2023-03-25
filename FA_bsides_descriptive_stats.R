@@ -56,6 +56,7 @@ library(vegan) # 'community' analyses
 library(viridis) # color palette
 library(psych) # pairs panel
 library(ggfortify) # PCA visualizations
+library(stringi) # order FA's in columns
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # READ IN AND PREPARE DATA                                                     ####
@@ -182,14 +183,14 @@ PCA_summary <- summary(PCA_results)
 PCA_import <- as.data.frame(PCA_summary[["cont"]][["importance"]])
 var_explained <- PCA_import[2, 1:2]
 
-# make final ggplot figure
+# make final ggplot figure (Points scaled by 1.5)
 ggplot(uscores1) + 
   scale_fill_viridis(discrete = TRUE) +
   scale_color_viridis(discrete = TRUE) +
   geom_text(data = vscores, aes(x = PC1, y = PC2, label = rownames(vscores)), col = 'red') +
   geom_segment(data = vscores, aes(x = 0, y = 0, xend = PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
                alpha = 0.75, color = 'grey30') +
-  geom_point(aes(x = PC1, y = PC2, fill = revisedSpecies, color = revisedSpecies,
+  geom_point(aes(x = PC1*1.5, y = PC2*1.5, fill = revisedSpecies, color = revisedSpecies,
                  shape = phylum), size = 4) +
   theme_bw() +
   theme(strip.text.y = element_text(angle = 0)) +
@@ -258,13 +259,13 @@ ggplot(uscores1) +
 
 
 
-###### TESTING MINIMAL FA BY LOOKING AT VECTORS IN PCA (16:0, 16:1w7c, 18:2w6c)
+###### TESTING MINIMAL FA BY LOOKING AT VECTORS IN PCA (`16:0`, `18:3w3`, `20:4w6`, `22:5w6`)
 
 ### PERMANOVA 
 
 # algal min FA for adonis
 minFA_only <- overlap_species %>%
-  select(`16:0`, `16:1w7c`, `18:2w6c`) 
+  select(`16:0`, `18:3w3`, `20:4w6`, `22:5w6`) 
 
 adonis2(abs(minFA_only) ~ revisedSpecies, data = overlap_species, method = 'bray', na.rm = TRUE)
 
@@ -311,6 +312,45 @@ ggplot(uscores1) +
   theme(strip.text.y = element_text(angle = 0)) +
   labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
        y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
+
+
+# Proportional stacked barplot of FA composition for each species
+
+# calc mean of each FA for each sp
+FA_means <- all_species %>%
+  select(revisedSpecies, phylum, `8:0`:`24:1w9`) %>%
+  group_by(phylum, revisedSpecies) %>%
+  summarise(across(`8:0`:`24:1w9`, mean)) %>%
+  pivot_longer(cols = `8:0`:`24:1w9`, names_to = 'Fatty Acid', values_to = 'value') %>%
+  filter(value >= 0.02295) %>%
+  mutate(phylum = case_when(phylum == "Chlorophyta" ~ "",
+                            phylum == "Ochrophyta" ~ "Ochrophyta",
+                            phylum == "Rhodophyta" ~ "Rhodophyta"))
+
+FA_means %>%
+  ggplot() +
+  geom_col(aes(x = revisedSpecies, y = value, fill = `Fatty Acid`), position = "fill") +
+  scale_fill_viridis(discrete = TRUE, option = 6) +
+  theme_bw() +
+  labs(x = "Species", y = "Mean Proportional Composition") +
+  guides(fill = guide_legend(title = "Fatty Acids")) +
+  facet_grid(cols = vars(phylum), scales = "free_x", space = "free_x") +
+  theme(axis.text.x = element_text(angle = 270, hjust = 0))
+  
+
+consumed %>%
+  filter(item %in% c('green', 'purple', 'red', 'mussel', 'cucumber')) %>%
+  ggplot() +
+  geom_col(aes(x = reorder(pycnoID, eaten, function(x){ sum(x)}), y = eaten, fill = item), position = "fill") +
+  scale_fill_viridis(discrete = TRUE, option = 5) +
+  theme_bw() + 
+  scale_x_discrete(label = c('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K')) +
+  geom_text(data = totals, aes(x = pycnoID, y= 1.05, label = total, fill = NULL)) +
+  labs(x = "", y = "Proportion Consumed") +
+  guides(fill=guide_legend(title="Prey"))
+
+
+
 
 ####
 #<<<<<<<<<<<<<<<<<<<<<<<<<<END OF SCRIPT>>>>>>>>>>>>>>>>>>>>>>>>#
