@@ -30,6 +30,9 @@
 #     - 'All' samples
 # 3. Fill in all values in paper table for FA and SI
 # 4. Create PCA labeling phylum instead of species (or shapes)
+# DO I NEED TO TAKE OUT C19 FOR ALL THESE SAMPLES???? WHAT'S GOING ON?????? 
+# CHECK THE C19 for everything. It should NOT be in there....
+# literally need to go back and zero out C19 from right side of proportions calcs :(
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # TABLE OF CONTENTS                                                            ####
@@ -46,6 +49,7 @@
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 # 2023-03-21 Script created from FA_descriptive_stats.R
+# 2023-03-25 had to remove all c19 standard from samples
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # LOAD PACKAGES                                                                ####
@@ -59,6 +63,13 @@ library(ggfortify) # PCA visualizations
 library(stringi) # order FA's in columns
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# LOAD FUNCTIONS                                                               ####
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+# fuction for "%notin%
+`%notin%` <- Negate(`%in%`)
+
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # READ IN AND PREPARE DATA                                                     ####
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -66,6 +77,7 @@ library(stringi) # order FA's in columns
 # Read in all core species from data pipeline and remove duplicated 'all' FA
 FASI_QAQC <- read_csv("Data/Biomarkers/FattyAcids/gradients2019_bsides_FASI_QAQC.csv")
 all_species <- FASI_QAQC %>%
+  select(!`19:0`) %>%
   filter(targetFA == "standards") %>%
   select_if(~ !is.numeric(.) || sum(., na.rm = TRUE) != 0)
 
@@ -93,7 +105,38 @@ SI_wide <- all_species %>%
 # DATA SUMMARY                                                                 ####
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+###### BIOMARKER VALUES FOR TABLE
 
+# calc mean and sd of each FA for each sp
+FA_means <- all_species %>%
+  mutate(across(c(`8:0`:`24:1w9`), function(x) x*100)) 
+FA_means <- FA_means %>%
+  select(revisedSpecies, phylum, `8:0`:`24:1w9`) %>%
+  group_by(phylum, revisedSpecies) %>%
+  summarise(across(`8:0`:`24:1w9`, list(mean = mean, sd = sd))) 
+FA_means <- FA_means %>%
+  mutate(across(where(is.numeric), round, 3))
+FA_means <- as.data.frame(t(FA_means)) 
+colnames(FA_means) <- FA_means[2,]
+
+
+# calc mean and sd of each SI for each sp
+
+SI_means <- all_species %>%
+  select(revisedSpecies, phylum, `CN ratio`:`d13C`) %>%
+  filter(!is.na(`CN ratio`)) %>%
+  group_by(phylum, revisedSpecies) %>%
+  summarise(across(`CN ratio`:`d13C`, list(mean = mean, sd = sd)))
+SI_means <- as.data.frame(t(SI_means)) 
+colnames(SI_means) <- SI_means[2,]
+
+marker_means <- FA_means %>%
+  bind_rows(SI_means[3:8,]) 
+marker_means <- marker_means %>% 
+  replace(is.na(.), "-") %>%
+  rownames_to_column()
+
+write_csv(marker_means, "marker_means.csv")
 
 
 ###### OVERLAPPING SAMPLES
@@ -109,7 +152,7 @@ marker_only <- overlap_species %>%
 adonis2(abs(marker_only) ~ revisedSpecies, data = overlap_species, method = 'bray', na.rm = TRUE)
 
 # run PCA
-PCA_results <-  rda(overlap_species[,c(21:63)], scale = TRUE)
+PCA_results <-  rda(overlap_species[,c(21:62)], scale = TRUE)
 # check that axes are above the mean (per Numerical Ecology)
 ev <- PCA_results$CA$eig
 ev>mean(ev)
@@ -215,7 +258,7 @@ adonis2(abs(FA_only) ~ revisedSpecies, data = all_species, method = 'bray', na.r
 
 
 # run PCA
-PCA_results <-  rda(all_species[,c(24:63)], scale = TRUE)
+PCA_results <-  rda(all_species[,c(24:62)], scale = TRUE)
 # check that axes are above the mean (per Numerical Ecology)
 ev <- PCA_results$CA$eig
 ev>mean(ev)
@@ -337,20 +380,6 @@ FA_means %>%
   facet_grid(cols = vars(phylum), scales = "free_x", space = "free_x") +
   theme(axis.text.x = element_text(angle = 270, hjust = 0))
   
-
-consumed %>%
-  filter(item %in% c('green', 'purple', 'red', 'mussel', 'cucumber')) %>%
-  ggplot() +
-  geom_col(aes(x = reorder(pycnoID, eaten, function(x){ sum(x)}), y = eaten, fill = item), position = "fill") +
-  scale_fill_viridis(discrete = TRUE, option = 5) +
-  theme_bw() + 
-  scale_x_discrete(label = c('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K')) +
-  geom_text(data = totals, aes(x = pycnoID, y= 1.05, label = total, fill = NULL)) +
-  labs(x = "", y = "Proportion Consumed") +
-  guides(fill=guide_legend(title="Prey"))
-
-
-
 
 ####
 #<<<<<<<<<<<<<<<<<<<<<<<<<<END OF SCRIPT>>>>>>>>>>>>>>>>>>>>>>>>#
