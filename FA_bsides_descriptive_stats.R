@@ -61,6 +61,7 @@ library(viridis) # color palette
 library(psych) # pairs panel
 library(ggfortify) # PCA visualizations
 library(stringi) # order FA's in columns
+library(factoextra) # clustering dendrogram
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # LOAD FUNCTIONS                                                               ####
@@ -97,7 +98,6 @@ overlap_species <- all_species %>%
 SI_wide <- all_species %>%
   filter(!is.na(`CN ratio`))
 
-  
 
 
 
@@ -136,7 +136,7 @@ marker_means <- marker_means %>%
   replace(is.na(.), "-") %>%
   rownames_to_column()
 
-write_csv(marker_means, "marker_means.csv")
+# write_csv(marker_means, "marker_means.csv")
 
 
 ###### OVERLAPPING SAMPLES
@@ -365,7 +365,7 @@ FA_means <- all_species %>%
   group_by(phylum, revisedSpecies) %>%
   summarise(across(`8:0`:`24:1w9`, mean)) %>%
   pivot_longer(cols = `8:0`:`24:1w9`, names_to = 'Fatty Acid', values_to = 'value') %>%
-  filter(value >= 0.02295) %>%
+  filter(value >= 0.0468) %>% # 1st quartile of all FA values in dataset
   mutate(phylum = case_when(phylum == "Chlorophyta" ~ "",
                             phylum == "Ochrophyta" ~ "Ochrophyta",
                             phylum == "Rhodophyta" ~ "Rhodophyta"))
@@ -379,6 +379,58 @@ FA_means %>%
   guides(fill = guide_legend(title = "Fatty Acids")) +
   facet_grid(cols = vars(phylum), scales = "free_x", space = "free_x") +
   theme(axis.text.x = element_text(angle = 270, hjust = 0))
+
+
+
+
+# cluster analysis of FA only
+
+Alg_dist <- vegdist(all_species[,24:62])
+Alg_clust <- hclust(Alg_dist, method="ward.D2")
+Alg_order <- data.frame(all_species$revisedSpecies, Alg_clust$order)
+Alg_order <- Alg_order[order(Alg_order$Alg_clust.order), ]
+
+plot(Alg_clust, las = 1, 
+     main="Cluster diagram of algae", 
+     xlab="Sample", 
+     ylab="Euclidean distance",
+     label = Alg_order$all_species.revisedSpecies)
+
+Alg_clust$labels <- all_species$revisedSpecies
+clust_col <- viridis(4, alpha = 1, begin = 0.2, end = 0.8, direction = 1, option = "C")
+
+fviz_dend(x = Alg_clust, cex = 0.8, lwd = 0.8, k = 4, 
+          k_colors = clust_col,
+          rect = TRUE, 
+          rect_border = "jco", 
+          rect_fill = TRUE,
+          type = "circular",
+          ggtheme = theme_bw())
+
+# cluster analysis of SI only
+
+Alg_dist <- vegdist(abs(SI_wide[,21:23]))
+Alg_clust <- hclust(Alg_dist, method="ward.D2")
+Alg_order <- data.frame(SI_wide$revisedSpecies, Alg_clust$order)
+Alg_order <- Alg_order[order(Alg_order$Alg_clust.order), ]
+
+plot(Alg_clust, las = 1, 
+     main="Cluster diagram of algae", 
+     xlab="Sample", 
+     ylab="Euclidean distance",
+     label = Alg_order$all_species.revisedSpecies)
+
+Alg_clust$labels <- all_species$revisedSpecies
+clust_col <- viridis(4, alpha = 1, begin = 0.2, end = 0.8, direction = 1, option = "C")
+
+fviz_dend(x = Alg_clust, cex = 0.8, lwd = 0.8, k = 4, 
+          k_colors = clust_col,
+          rect = TRUE, 
+          rect_border = "jco", 
+          rect_fill = TRUE,
+          type = "circular",
+          ggtheme = theme_bw())
+
   
 
 ####
