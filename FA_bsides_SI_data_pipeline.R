@@ -56,8 +56,7 @@ library(stringr)
 
 
 bsides_FA <- read_csv("Data/Biomarkers/FattyAcids/bside_algae_spp_final_concs.csv")
-bsides_SI <- read_csv("Data/Biomarkers/SI/bside_full_list_KI.csv") %>%
-  drop_na(ProjID)
+bsides_SI <- read_csv("Data/Biomarkers/SI/bside_full_list_KI.csv") 
 core_FA <- read_csv("Data/Biomarkers/FattyAcids/gradients2019_corespecies_FA_QAQC.csv")
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -70,20 +69,28 @@ core_FA <- read_csv("Data/Biomarkers/FattyAcids/gradients2019_corespecies_FA_QAQ
 # extract ProjID value into new column and pivot data wider
 FA_step1 <- bsides_FA %>% 
   mutate(ProjID = str_extract(`sample`, '(?<=_).*?(?=_)')) %>%
-  pivot_wider(names_from = FA, values_from = proportion, values_fill = 0)
+  pivot_wider(names_from = FA, values_from = proportion, values_fill = 0) %>%
+  filter(targetFA == "standards")
 
 
 # PREPARE SI DATASET WITH METADATA FOR JOINING
 
 # extract ProjID value into new column
 SI_step1 <- bsides_SI
+
+# pull up all SI projectID to first column
+SI_step2 <- SI_step1 %>%
+  mutate(ProjID = coalesce(ProjID, `SI-ID`)) %>%
+  drop_na(ProjID) %>%
+  filter(!row_number() %in% c(127:131))
+  
   
 
 
 # JOIN DATASETS
 
 # find differences in column names between FA and SI (in first vector, not in second)
-diffSI <- SI_step1 %>%
+diffSI <- SI_step2 %>%
   select(ProjID, `CN ratio`) %>%
   filter(!is.na(`CN ratio`))
 FA_noSI <- as_tibble(setdiff(FA_step1$ProjID, diffSI$ProjID))
@@ -93,7 +100,7 @@ names(SI_noFA) <- "ProjID"
 
 
 # join FA and SI data with metadata by ProjID column
-full_step1 <- SI_step1 %>%
+full_step1 <- SI_step2 %>%
   full_join(FA_step1, by = "ProjID")
 # update species names to most current values and all site names
 full_step2 <- full_step1 %>%
@@ -122,8 +129,7 @@ full_step2 <- full_step1 %>%
                                    sample == "IRCO_11F1030_0076" ~ "Iridaea cordata",
                                    sample == "IRCO_13F1251_0094" ~ "Iridaea cordata",
                                    sample == "PHAN_13F1231_0150" ~ "Callophyllis atrosanguinea",
-                                   sample == "PHAN_13F1230_0143" ~ "Callophyllis atrosanguinea",
-                                   sample == "DEAP_08F0624_0190" ~ "Desmarestia menziesii")) %>%
+                                   sample == "PHAN_13F1230_0143" ~ "Callophyllis atrosanguinea")) %>%
   mutate(revisedSpecies = coalesce(coreadditions, `REVISED NAME`, genusSpecies...9, genusSpecies...36))
 # reduce to required columns for analysis and delete comment lines
 full_step3 <- full_step2 %>%
@@ -142,20 +148,22 @@ full_step5 <- full_step4 %>%
   filter(revisedSpecies != "eliminate b/c uncertain ID")
 # fill in missing phylum values (currently only Rhodophyta, check before changing this code)
 full_step6 <- full_step5 %>%
-  mutate(phylum = replace_na(phylum, "Rhodophyta"))
+  mutate(phylum1 = case_when(revisedSpecies == "Benthic diatoms" ~ "Ochrophyta",
+                             revisedSpecies == "Meridionella antarctica" ~ "Rhodophyta",
+                             revisedSpecies == "Georgiella confluens" ~ "Rhodophyta",
+                             revisedSpecies == "Porphyra plocamiestris" ~ "Rhodophyta",
+                             revisedSpecies == "Myriogramme smithii" ~ "Rhodophyta",
+                             revisedSpecies == "Pachymenia orbicularis" ~ "Rhodophyta",
+                             revisedSpecies == "Palmaria decipiens" ~ "Rhodophyta",
+                             revisedSpecies == "Pantoneura plocamioides" ~ "Rhodophyta",
+                             revisedSpecies == "Sarcopeltis antarctica" ~ "Rhodophyta",
+                             revisedSpecies == "Iridaea cordata" ~ "Rhodophyta",
+                             revisedSpecies == "Callophyllis atrosanguinea" ~ "Rhodophyta")) %>%
+  mutate(phylum = coalesce(phylum, phylum1)) %>%
+  select(!phylum1)
 
-# save final joined FA dataset with different name (contains duplicates all versus standards)
-gradients2019_bsides_DUPES_FASI_QAQC <- full_step6
-
-# write .csv with current joined data
-write_csv(gradients2019_bsides_DUPES_FASI_QAQC, "Data/Biomarkers/FattyAcids/gradients2019_bsides_DUPES_FASI_QAQC.csv")
-
-# save dataset without duplicates (remove 'all' targetFA)
-full_step7 <- full_step6 %>%
-  filter(targetFA == "standards")
-
-# save final joined FA dataset with different name
-gradients2019_bsides_FASI_QAQC <- full_step7
+# save final joined FA dataset
+gradients2019_bsides_FASI_QAQC <- full_step6
   
 # write .csv with current joined data
 write_csv(gradients2019_bsides_FASI_QAQC, "Data/Biomarkers/FattyAcids/gradients2019_bsides_FASI_QAQC.csv")

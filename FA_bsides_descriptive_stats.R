@@ -23,16 +23,12 @@
 # FA_bsides_SI_data_pipeline.R
 
 # TO DO 
-# 1. Combine ggplot PCA plot with vectors  
 # 2. Run PERMANOVA and PCA for SI and FA separately
 #     - samples in common
 #     - FA with additional samples
 #     - 'All' samples
 # 3. Fill in all values in paper table for FA and SI
-# 4. Create PCA labeling phylum instead of species (or shapes)
-# DO I NEED TO TAKE OUT C19 FOR ALL THESE SAMPLES???? WHAT'S GOING ON?????? 
-# CHECK THE C19 for everything. It should NOT be in there....
-# literally need to go back and zero out C19 from right side of proportions calcs :(
+
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # TABLE OF CONTENTS                                                            ####
@@ -79,7 +75,6 @@ library(factoextra) # clustering dendrogram
 FASI_QAQC <- read_csv("Data/Biomarkers/FattyAcids/gradients2019_bsides_FASI_QAQC.csv")
 all_species <- FASI_QAQC %>%
   select(!`19:0`) %>%
-  filter(targetFA == "standards") %>%
   select_if(~ !is.numeric(.) || sum(., na.rm = TRUE) != 0)
 
 # Create simplified long dataset for analysis, remove non-overlapping samples
@@ -98,6 +93,10 @@ overlap_species <- all_species %>%
 SI_wide <- all_species %>%
   filter(!is.na(`CN ratio`))
 
+# FA only wide dataset
+FA_wide <- all_species %>%
+  filter(!is.na(`8:0`))
+
 
 
 
@@ -109,10 +108,12 @@ SI_wide <- all_species %>%
 
 # calc mean and sd of each FA for each sp
 FA_means <- all_species %>%
+  filter(revisedSpecies != "Benthic diatoms") %>%
   mutate(across(c(`8:0`:`24:1w9`), function(x) x*100)) 
 FA_means <- FA_means %>%
   select(revisedSpecies, phylum, `8:0`:`24:1w9`) %>%
   group_by(phylum, revisedSpecies) %>%
+  filter(`8:0` != 0) %>%
   summarise(across(`8:0`:`24:1w9`, list(mean = mean, sd = sd))) 
 FA_means <- FA_means %>%
   mutate(across(where(is.numeric), round, 3))
@@ -139,7 +140,7 @@ marker_means <- marker_means %>%
 # write_csv(marker_means, "marker_means.csv")
 
 
-###### OVERLAPPING SAMPLES
+###### OVERLAPPING SAMPLES no diatoms
 
 
 
@@ -147,12 +148,13 @@ marker_means <- marker_means %>%
 
 # algal FA for adonis
 marker_only <- overlap_species %>%
+  filter(revisedSpecies != "Benthic diatoms") %>%
   select(`CN ratio`:`24:1w9`) 
 
-adonis2(abs(marker_only) ~ revisedSpecies, data = overlap_species, method = 'bray', na.rm = TRUE)
+adonis2(abs(marker_only) ~ revisedSpecies, data = filter(overlap_species, revisedSpecies != "Benthic diatoms"), method = 'bray', na.rm = TRUE)
 
 # run PCA
-PCA_results <-  rda(overlap_species[,c(21:62)], scale = TRUE)
+PCA_results <-  rda(marker_only, scale = TRUE)
 # check that axes are above the mean (per Numerical Ecology)
 ev <- PCA_results$CA$eig
 ev>mean(ev)
@@ -168,7 +170,58 @@ autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.siz
 
 # extract PCA coordinates
 uscores <- data.frame(PCA_results$CA$u)
-uscores1 <- inner_join(rownames_to_column(overlap_species), rownames_to_column(data.frame(uscores)), by = "rowname")
+uscores1 <- inner_join(rownames_to_column(filter(overlap_species, revisedSpecies != "Benthic diatoms")), rownames_to_column(data.frame(uscores)), by = "rowname")
+vscores <- data.frame(PCA_results$CA$v)
+# extract explanatory percentages
+PCA_summary <- summary(PCA_results)
+PCA_import <- as.data.frame(PCA_summary[["cont"]][["importance"]])
+var_explained <- PCA_import[2, 1:2]
+
+# make final ggplot figure
+ggplot(uscores1) + 
+  scale_fill_viridis(discrete = TRUE) +
+  scale_color_viridis(discrete = TRUE) +
+  geom_text(data = vscores, aes(x = -PC1, y = PC2, label = rownames(vscores)), col = 'red') +
+  geom_segment(data = vscores, aes(x = 0, y = 0, xend = -PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
+               alpha = 0.75, color = 'grey30') +
+  geom_point(aes(x = -PC1, y = PC2, fill = revisedSpecies, color = revisedSpecies,
+                 shape = phylum), size = 4) +
+  theme_bw() +
+  theme(strip.text.y = element_text(angle = 0)) +
+  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
+     y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
+
+
+
+##### WITHOUT DIATOMS
+
+### PERMANOVA 
+
+# algal FA for adonis
+marker_only <- overlap_species %>%
+  filter(revisedSpecies != "Benthic diatoms") %>%
+  select(`CN ratio`:`24:1w9`) 
+
+adonis2(abs(marker_only) ~ revisedSpecies, data = filter(overlap_species, revisedSpecies != "Benthic diatoms"), method = 'bray', na.rm = TRUE)
+
+# run PCA
+PCA_results <-  rda(marker_only, scale = TRUE)
+# check that axes are above the mean (per Numerical Ecology)
+ev <- PCA_results$CA$eig
+ev>mean(ev)
+# proportion explained
+barplot(ev, main="eigenvalues", col="bisque", las=2)
+abline(h=mean(ev), col="red")
+legend("topright", "Average eignenvalue", lwd=1, col=2)
+# testing different scalings (1 = good for samples/sites, 2 = good for correlations)
+biplot(PCA_results, scaling=1, main="PCA scaling 1") # scaling 1 for distances between objects
+biplot(PCA_results, main="PCA scaling 2") # correlation biplot, for seeing correlation between response variables (species) see angles. 
+autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
+
+
+# extract PCA coordinates
+uscores <- data.frame(PCA_results$CA$u)
+uscores1 <- inner_join(rownames_to_column(filter(overlap_species, revisedSpecies != "Benthic diatoms")), rownames_to_column(data.frame(uscores)), by = "rowname")
 vscores <- data.frame(PCA_results$CA$v)
 # extract explanatory percentages
 PCA_summary <- summary(PCA_results)
@@ -187,7 +240,9 @@ ggplot(uscores1) +
   theme_bw() +
   theme(strip.text.y = element_text(angle = 0)) +
   labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
-     y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
+       y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
+
+
 
 
 
@@ -242,6 +297,61 @@ ggplot(uscores1) +
 
 
 
+###### SI VALUES ONLY no diatoms
+
+### PERMANOVA 
+
+# algal SI for adonis
+SI_only <- SI_wide %>%
+  filter(revisedSpecies != "Benthic diatoms") %>%
+  select(`CN ratio`:d13C) 
+
+adonis2(abs(SI_only) ~ revisedSpecies, data = filter(SI_wide, revisedSpecies != "Benthic diatoms"), method = 'bray', na.rm = TRUE)
+
+# run PCA
+PCA_results <-  rda(SI_wide[,c(21:23)], scale = TRUE)
+# check that axes are above the mean (per Numerical Ecology)
+ev <- PCA_results$CA$eig
+ev>mean(ev)
+# proportion explained
+barplot(ev, main="eigenvalues", col="bisque", las=2)
+abline(h=mean(ev), col="red")
+legend("topright", "Average eignenvalue", lwd=1, col=2)
+# testing different scalings (1 = good for samples/sites, 2 = good for correlations)
+biplot(PCA_results, scaling=1, main="PCA scaling 1") # scaling 1 for distances between objects
+biplot(PCA_results, main="PCA scaling 2") # correlation biplot, for seeing correlation between response variables (species) see angles. 
+autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
+
+
+# extract PCA coordinates
+uscores <- data.frame(PCA_results$CA$u)
+uscores1 <- inner_join(rownames_to_column(filter(SI_wide, revisedSpecies != "Benthic diatoms")), rownames_to_column(data.frame(uscores)), by = "rowname")
+vscores <- data.frame(PCA_results$CA$v)
+# extract explanatory percentages
+PCA_summary <- summary(PCA_results)
+PCA_import <- as.data.frame(PCA_summary[["cont"]][["importance"]])
+var_explained <- PCA_import[2, 1:2]
+
+# make final ggplot figure (Points scaled by 1.5)
+ggplot(uscores1) + 
+  scale_fill_viridis(discrete = TRUE) +
+  scale_color_viridis(discrete = TRUE) +
+  geom_text(data = vscores, aes(x = PC1, y = PC2, label = rownames(vscores)), col = 'red') +
+  geom_segment(data = vscores, aes(x = 0, y = 0, xend = PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
+               alpha = 0.75, color = 'grey30') +
+  geom_point(aes(x = PC1*1.5, y = PC2*1.5, fill = revisedSpecies, color = revisedSpecies,
+                 shape = phylum), size = 4) +
+  theme_bw() +
+  theme(strip.text.y = element_text(angle = 0)) +
+  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
+       y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
+
+
+
+
+
+
+
 ###### FA VALUES ONLY
 
 
@@ -249,16 +359,16 @@ ggplot(uscores1) +
 ### PERMANOVA 
 
 # algal FA for adonis
-FA_only <- all_species %>%
+FA_only <- FA_wide %>%
   select(`8:0`:`24:1w9`) 
 
-adonis2(abs(FA_only) ~ revisedSpecies, data = all_species, method = 'bray', na.rm = TRUE)
+adonis2(abs(FA_only) ~ revisedSpecies, data = FA_wide, method = 'bray', na.rm = TRUE)
 
 # PCA
 
 
 # run PCA
-PCA_results <-  rda(all_species[,c(24:62)], scale = TRUE)
+PCA_results <-  rda(FA_wide[,c(24:62)], scale = TRUE)
 # check that axes are above the mean (per Numerical Ecology)
 ev <- PCA_results$CA$eig
 ev>mean(ev)
@@ -299,6 +409,312 @@ ggplot(uscores1) +
   theme(strip.text.y = element_text(angle = 0)) +
   labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
        y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
+
+
+
+###### FA VALUES ONLY NO DIATOMS
+
+
+
+### PERMANOVA 
+
+# algal FA for adonis
+FA_only <- FA_wide %>%
+  filter(revisedSpecies != "Benthic diatoms") %>%
+  select(`8:0`:`24:1w9`) 
+
+adonis2(abs(FA_only) ~ revisedSpecies, data = filter(FA_wide, revisedSpecies != "Benthic diatoms"), method = 'bray', na.rm = TRUE)
+
+# PCA
+
+
+# run PCA
+PCA_results <-  rda(FA_only, scale = TRUE)
+# check that axes are above the mean (per Numerical Ecology)
+ev <- PCA_results$CA$eig
+ev>mean(ev)
+# proportion explained
+barplot(ev, main="eigenvalues", col="bisque", las=2)
+abline(h=mean(ev), col="red")
+legend("topright", "Average eignenvalue", lwd=1, col=2)
+# testing different scalings (1 = good for samples/sites, 2 = good for correlations)
+biplot(PCA_results, scaling=1, main="PCA scaling 1") # scaling 1 for distances between objects
+biplot(PCA_results, main="PCA scaling 2") # correlation biplot, for seeing correlation between response variables (species) see angles. 
+autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
+
+
+# extract PCA coordinates
+uscores <- data.frame(PCA_results$CA$u)
+uscores1 <- inner_join(rownames_to_column(filter(FA_wide, revisedSpecies != "Benthic diatoms")), rownames_to_column(data.frame(uscores)), by = "rowname")
+vscores <- data.frame(PCA_results$CA$v)
+# extract explanatory percentages
+PCA_summary <- summary(PCA_results)
+PCA_import <- as.data.frame(PCA_summary[["cont"]][["importance"]])
+var_explained <- PCA_import[2, 1:2]
+
+# make final ggplot figure
+ggplot(uscores1) + 
+  scale_fill_viridis(discrete = TRUE) +
+  scale_color_viridis(discrete = TRUE) +
+  geom_text(data = vscores, aes(x = PC1, y = PC2, label = rownames(vscores)), col = 'red') +
+  geom_segment(data = vscores, aes(x = 0, y = 0, xend = PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
+               alpha = 0.75, color = 'grey30') +
+  geom_point(aes(x = PC1, y = PC2, fill = revisedSpecies, color = revisedSpecies,
+                 shape = phylum), size = 4) +
+  #   geom_text(
+  #      aes(x = PC1, y = PC2),
+  #      label=uscores1$revisedSpecies,
+  #      check_overlap=T
+  #    ) +
+  theme_bw() +
+  theme(strip.text.y = element_text(angle = 0)) +
+  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
+       y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
+
+
+
+###### FA VALUES ONLY NO DIATOMS REDUCED FA
+
+
+
+### PERMANOVA 
+
+# algal FA for adonis
+FA_only <- FA_wide %>%
+  filter(revisedSpecies != "Benthic diatoms") %>%
+  select(`20:2w6`:`20:4w6`, `16:0`, `18:3w3`) 
+
+adonis2(abs(FA_only) ~ revisedSpecies, data = filter(FA_wide, revisedSpecies != "Benthic diatoms"), method = 'bray', na.rm = TRUE)
+
+# PCA
+
+
+# run PCA
+PCA_results <-  rda(FA_only, scale = TRUE)
+# check that axes are above the mean (per Numerical Ecology)
+ev <- PCA_results$CA$eig
+ev>mean(ev)
+# proportion explained
+barplot(ev, main="eigenvalues", col="bisque", las=2)
+abline(h=mean(ev), col="red")
+legend("topright", "Average eignenvalue", lwd=1, col=2)
+# testing different scalings (1 = good for samples/sites, 2 = good for correlations)
+biplot(PCA_results, scaling=1, main="PCA scaling 1") # scaling 1 for distances between objects
+biplot(PCA_results, main="PCA scaling 2") # correlation biplot, for seeing correlation between response variables (species) see angles. 
+autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
+
+
+# extract PCA coordinates
+uscores <- data.frame(PCA_results$CA$u)
+uscores1 <- inner_join(rownames_to_column(filter(FA_wide, revisedSpecies != "Benthic diatoms")), rownames_to_column(data.frame(uscores)), by = "rowname")
+vscores <- data.frame(PCA_results$CA$v)
+# extract explanatory percentages
+PCA_summary <- summary(PCA_results)
+PCA_import <- as.data.frame(PCA_summary[["cont"]][["importance"]])
+var_explained <- PCA_import[2, 1:2]
+
+# make final ggplot figure
+ggplot(uscores1) + 
+  scale_fill_viridis(discrete = TRUE) +
+  scale_color_viridis(discrete = TRUE) +
+  geom_text(data = vscores, aes(x = PC1, y = PC2, label = rownames(vscores)), col = 'red') +
+  geom_segment(data = vscores, aes(x = 0, y = 0, xend = PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
+               alpha = 0.75, color = 'grey30') +
+  geom_point(aes(x = PC1, y = PC2, fill = revisedSpecies, color = revisedSpecies,
+                 shape = phylum), size = 4) +
+  #   geom_text(
+  #      aes(x = PC1, y = PC2),
+  #      label=uscores1$revisedSpecies,
+  #      check_overlap=T
+  #    ) +
+  theme_bw() +
+  theme(strip.text.y = element_text(angle = 0)) +
+  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
+       y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
+
+
+
+###### FA VALUES ONLY NO DIATOMS REDUCED FA
+
+
+
+### PERMANOVA 
+
+# algal FA for adonis
+FA_only <- FA_wide %>%
+  filter(revisedSpecies != "Benthic diatoms") %>%
+  select(`20:5w3`:`20:4w6`, `18:2w6c`, `18:3w3`) 
+
+adonis2(abs(FA_only) ~ revisedSpecies, data = filter(FA_wide, revisedSpecies != "Benthic diatoms"), method = 'bray', na.rm = TRUE)
+
+# PCA
+
+
+# run PCA
+PCA_results <-  rda(FA_only, scale = TRUE)
+# check that axes are above the mean (per Numerical Ecology)
+ev <- PCA_results$CA$eig
+ev>mean(ev)
+# proportion explained
+barplot(ev, main="eigenvalues", col="bisque", las=2)
+abline(h=mean(ev), col="red")
+legend("topright", "Average eignenvalue", lwd=1, col=2)
+# testing different scalings (1 = good for samples/sites, 2 = good for correlations)
+biplot(PCA_results, scaling=1, main="PCA scaling 1") # scaling 1 for distances between objects
+biplot(PCA_results, main="PCA scaling 2") # correlation biplot, for seeing correlation between response variables (species) see angles. 
+autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
+
+
+# extract PCA coordinates
+uscores <- data.frame(PCA_results$CA$u)
+uscores1 <- inner_join(rownames_to_column(filter(FA_wide, revisedSpecies != "Benthic diatoms")), rownames_to_column(data.frame(uscores)), by = "rowname")
+vscores <- data.frame(PCA_results$CA$v)
+# extract explanatory percentages
+PCA_summary <- summary(PCA_results)
+PCA_import <- as.data.frame(PCA_summary[["cont"]][["importance"]])
+var_explained <- PCA_import[2, 1:2]
+
+# make final ggplot figure
+ggplot(uscores1) + 
+  scale_fill_viridis(discrete = TRUE) +
+  scale_color_viridis(discrete = TRUE) +
+  geom_text(data = vscores, aes(x = PC1, y = PC2, label = rownames(vscores)), col = 'red') +
+  geom_segment(data = vscores, aes(x = 0, y = 0, xend = PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
+               alpha = 0.75, color = 'grey30') +
+  geom_point(aes(x = PC1, y = PC2, fill = revisedSpecies, color = revisedSpecies,
+                 shape = phylum), size = 4) +
+  #   geom_text(
+  #      aes(x = PC1, y = PC2),
+  #      label=uscores1$revisedSpecies,
+  #      check_overlap=T
+  #    ) +
+  theme_bw() +
+  theme(strip.text.y = element_text(angle = 0)) +
+  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
+       y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
+
+
+
+###### FA VALUES ONLY NO DIATOMS REDUCED FA
+
+
+
+### PERMANOVA 
+
+# algal FA for adonis
+FA_only <- FA_wide %>%
+  filter(revisedSpecies != "Benthic diatoms") %>%
+  select(`16:0`, `18:3w3`, `20:4w6`, `18:1w9c`, `20:3w3`,`20:5w3`, `22:3w6`, `15:0`) 
+
+adonis2(abs(FA_only) ~ revisedSpecies, data = filter(FA_wide, revisedSpecies != "Benthic diatoms"), method = 'bray', na.rm = TRUE)
+
+# PCA
+
+
+# run PCA
+PCA_results <-  rda(FA_only, scale = TRUE)
+# check that axes are above the mean (per Numerical Ecology)
+ev <- PCA_results$CA$eig
+ev>mean(ev)
+# proportion explained
+barplot(ev, main="eigenvalues", col="bisque", las=2)
+abline(h=mean(ev), col="red")
+legend("topright", "Average eignenvalue", lwd=1, col=2)
+# testing different scalings (1 = good for samples/sites, 2 = good for correlations)
+biplot(PCA_results, scaling=1, main="PCA scaling 1") # scaling 1 for distances between objects
+biplot(PCA_results, main="PCA scaling 2") # correlation biplot, for seeing correlation between response variables (species) see angles. 
+autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
+
+
+# extract PCA coordinates
+uscores <- data.frame(PCA_results$CA$u)
+uscores1 <- inner_join(rownames_to_column(filter(FA_wide, revisedSpecies != "Benthic diatoms")), rownames_to_column(data.frame(uscores)), by = "rowname")
+vscores <- data.frame(PCA_results$CA$v)
+# extract explanatory percentages
+PCA_summary <- summary(PCA_results)
+PCA_import <- as.data.frame(PCA_summary[["cont"]][["importance"]])
+var_explained <- PCA_import[2, 1:2]
+
+# make final ggplot figure
+ggplot(uscores1) + 
+  scale_fill_viridis(discrete = TRUE) +
+  scale_color_viridis(discrete = TRUE) +
+  geom_text(data = vscores, aes(x = PC1, y = PC2, label = rownames(vscores)), col = 'red') +
+  geom_segment(data = vscores, aes(x = 0, y = 0, xend = PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
+               alpha = 0.75, color = 'grey30') +
+  geom_point(aes(x = PC1, y = PC2, fill = revisedSpecies, color = revisedSpecies,
+                 shape = phylum), size = 4) +
+  #   geom_text(
+  #      aes(x = PC1, y = PC2),
+  #      label=uscores1$revisedSpecies,
+  #      check_overlap=T
+  #    ) +
+  theme_bw() +
+  theme(strip.text.y = element_text(angle = 0)) +
+  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
+       y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
+
+
+
+###### FA VALUES and SI NO DIATOMS REDUCED FA
+
+
+
+### PERMANOVA 
+
+# algal FA for adonis
+FA_only <- overlap_species %>%
+  filter(revisedSpecies != "Benthic diatoms") %>%
+  select(`CN ratio`, `16:0`, `20:2w6`, `18:3w3`, `20:4w6`, `18:1w9c`, `20:3w3`, `20:2w6`) 
+
+adonis2(abs(FA_only) ~ revisedSpecies, data = filter(FA_wide, revisedSpecies != "Benthic diatoms"), method = 'bray', na.rm = TRUE)
+
+# PCA
+
+
+# run PCA
+PCA_results <-  rda(FA_only, scale = TRUE)
+# check that axes are above the mean (per Numerical Ecology)
+ev <- PCA_results$CA$eig
+ev>mean(ev)
+# proportion explained
+barplot(ev, main="eigenvalues", col="bisque", las=2)
+abline(h=mean(ev), col="red")
+legend("topright", "Average eignenvalue", lwd=1, col=2)
+# testing different scalings (1 = good for samples/sites, 2 = good for correlations)
+biplot(PCA_results, scaling=1, main="PCA scaling 1") # scaling 1 for distances between objects
+biplot(PCA_results, main="PCA scaling 2") # correlation biplot, for seeing correlation between response variables (species) see angles. 
+autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
+
+
+# extract PCA coordinates
+uscores <- data.frame(PCA_results$CA$u)
+uscores1 <- inner_join(rownames_to_column(filter(overlap_species, revisedSpecies != "Benthic diatoms")), rownames_to_column(data.frame(uscores)), by = "rowname")
+vscores <- data.frame(PCA_results$CA$v)
+# extract explanatory percentages
+PCA_summary <- summary(PCA_results)
+PCA_import <- as.data.frame(PCA_summary[["cont"]][["importance"]])
+var_explained <- PCA_import[2, 1:2]
+
+# make final ggplot figure
+ggplot(uscores1) + 
+  scale_fill_viridis(discrete = TRUE) +
+  scale_color_viridis(discrete = TRUE) +
+  geom_text(data = vscores, aes(x = PC1, y = PC2, label = rownames(vscores)), col = 'red') +
+  geom_segment(data = vscores, aes(x = 0, y = 0, xend = PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
+               alpha = 0.75, color = 'grey30') +
+  geom_point(aes(x = PC1, y = PC2, fill = revisedSpecies, color = revisedSpecies,
+                 shape = phylum), size = 4) +
+  #   geom_text(
+  #      aes(x = PC1, y = PC2),
+  #      label=uscores1$revisedSpecies,
+  #      check_overlap=T
+  #    ) +
+  theme_bw() +
+  theme(strip.text.y = element_text(angle = 0)) +
+  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
+       y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
+
 
 
 
@@ -357,18 +773,485 @@ ggplot(uscores1) +
        y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
 
 
+
+
+
+###### TESTING MINIMAL FA BY LOOKING AT VECTORS IN PCA (`16:0`, `18:3w3`, `20:4w6`, `22:5w6`)
+
+### PERMANOVA 
+
+# algal min FA for adonis
+minFA_only <- overlap_species %>%
+  select(`16:0`, `18:2w6c`, `16:1w7c`, `17:0`) 
+
+adonis2(abs(minFA_only) ~ revisedSpecies, data = overlap_species, method = 'bray', na.rm = TRUE)
+
+
+# run PCA
+PCA_results <-  rda(minFA_only, scale = TRUE)
+# check that axes are above the mean (per Numerical Ecology)
+ev <- PCA_results$CA$eig
+ev>mean(ev)
+# proportion explained
+barplot(ev, main="eigenvalues", col="bisque", las=2)
+abline(h=mean(ev), col="red")
+legend("topright", "Average eignenvalue", lwd=1, col=2)
+# testing different scalings (1 = good for samples/sites, 2 = good for correlations)
+biplot(PCA_results, scaling=1, main="PCA scaling 1") # scaling 1 for distances between objects
+biplot(PCA_results, main="PCA scaling 2") # correlation biplot, for seeing correlation between response variables (species) see angles. 
+autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
+
+
+# extract PCA coordinates
+uscores <- data.frame(PCA_results$CA$u)
+uscores1 <- inner_join(rownames_to_column(overlap_species), rownames_to_column(data.frame(uscores)), by = "rowname")
+vscores <- data.frame(PCA_results$CA$v)
+# extract explanatory percentages
+PCA_summary <- summary(PCA_results)
+PCA_import <- as.data.frame(PCA_summary[["cont"]][["importance"]])
+var_explained <- PCA_import[2, 1:2]
+
+# make final ggplot figure (scale on points changed to highlight spp differences)
+ggplot(uscores1) + 
+  scale_fill_viridis(discrete = TRUE) +
+  scale_color_viridis(discrete = TRUE) +
+  geom_text(data = vscores, aes(x = PC1, y = PC2, label = rownames(vscores)), col = 'red') +
+  geom_segment(data = vscores, aes(x = 0, y = 0, xend = PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
+               alpha = 0.75, color = 'grey30') +
+  geom_point(aes(x = PC1*2, y = PC2*2, fill = revisedSpecies, color = revisedSpecies,
+                 shape = phylum), size = 4) +
+  #   geom_text(
+  #      aes(x = PC1, y = PC2),
+  #      label=uscores1$revisedSpecies,
+  #      check_overlap=T
+  #    ) +
+  theme_bw() +
+  theme(strip.text.y = element_text(angle = 0)) +
+  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
+       y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
+
+
+
+###### TESTING MINIMAL FA BY LOOKING AT VECTORS IN PCA (Just EFA)
+
+### PERMANOVA 
+
+# algal min FA for adonis
+minFA_only <- overlap_species %>%
+  select(`18:2w6c`, `18:3w3`, `20:4w6`, `20:5w3`, `22:6w3`) 
+
+adonis2(abs(minFA_only) ~ revisedSpecies, data = overlap_species, method = 'bray', na.rm = TRUE)
+
+
+# run PCA
+PCA_results <-  rda(minFA_only, scale = TRUE)
+# check that axes are above the mean (per Numerical Ecology)
+ev <- PCA_results$CA$eig
+ev>mean(ev)
+# proportion explained
+barplot(ev, main="eigenvalues", col="bisque", las=2)
+abline(h=mean(ev), col="red")
+legend("topright", "Average eignenvalue", lwd=1, col=2)
+# testing different scalings (1 = good for samples/sites, 2 = good for correlations)
+biplot(PCA_results, scaling=1, main="PCA scaling 1") # scaling 1 for distances between objects
+biplot(PCA_results, main="PCA scaling 2") # correlation biplot, for seeing correlation between response variables (species) see angles. 
+autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
+
+
+# extract PCA coordinates
+uscores <- data.frame(PCA_results$CA$u)
+uscores1 <- inner_join(rownames_to_column(overlap_species), rownames_to_column(data.frame(uscores)), by = "rowname")
+vscores <- data.frame(PCA_results$CA$v)
+# extract explanatory percentages
+PCA_summary <- summary(PCA_results)
+PCA_import <- as.data.frame(PCA_summary[["cont"]][["importance"]])
+var_explained <- PCA_import[2, 1:2]
+
+# make final ggplot figure (scale on points changed to highlight spp differences)
+ggplot(uscores1) + 
+  scale_fill_viridis(discrete = TRUE) +
+  scale_color_viridis(discrete = TRUE) +
+  geom_text(data = vscores, aes(x = PC1, y = PC2, label = rownames(vscores)), col = 'red') +
+  geom_segment(data = vscores, aes(x = 0, y = 0, xend = PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
+               alpha = 0.75, color = 'grey30') +
+  geom_point(aes(x = PC1*2, y = PC2*2, fill = revisedSpecies, color = revisedSpecies,
+                 shape = phylum), size = 4) +
+  #   geom_text(
+  #      aes(x = PC1, y = PC2),
+  #      label=uscores1$revisedSpecies,
+  #      check_overlap=T
+  #    ) +
+  theme_bw() +
+  theme(strip.text.y = element_text(angle = 0)) +
+  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
+       y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
+
+
+
+
+###### TESTING MINIMAL FA BY LOOKING AT SIMPER VALUES NO DIATOMS
+
+### PERMANOVA 
+
+# algal min FA for adonis
+minFA_only <- FA_wide %>%
+  filter(revisedSpecies != "Benthic diatoms") %>%
+  select(`18:1w9c`, `18:3w3`, `20:4w6`, `20:5w3`, `16:0`, `16:1w7c`) 
+
+adonis2(abs(minFA_only) ~ revisedSpecies, data = overlap_species, method = 'bray', na.rm = TRUE)
+
+
+# run PCA
+PCA_results <-  rda(minFA_only, scale = TRUE)
+# check that axes are above the mean (per Numerical Ecology)
+ev <- PCA_results$CA$eig
+ev>mean(ev)
+# proportion explained
+barplot(ev, main="eigenvalues", col="bisque", las=2)
+abline(h=mean(ev), col="red")
+legend("topright", "Average eignenvalue", lwd=1, col=2)
+# testing different scalings (1 = good for samples/sites, 2 = good for correlations)
+biplot(PCA_results, scaling=1, main="PCA scaling 1") # scaling 1 for distances between objects
+biplot(PCA_results, main="PCA scaling 2") # correlation biplot, for seeing correlation between response variables (species) see angles. 
+autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
+
+
+# extract PCA coordinates
+uscores <- data.frame(PCA_results$CA$u)
+uscores1 <- inner_join(rownames_to_column(filter(FA_wide, revisedSpecies != "Benthic diatoms")), rownames_to_column(data.frame(uscores)), by = "rowname")
+vscores <- data.frame(PCA_results$CA$v)
+# extract explanatory percentages
+PCA_summary <- summary(PCA_results)
+PCA_import <- as.data.frame(PCA_summary[["cont"]][["importance"]])
+var_explained <- PCA_import[2, 1:2]
+
+# make final ggplot figure (scale on points changed to highlight spp differences)
+ggplot(uscores1) + 
+  scale_fill_viridis(discrete = TRUE) +
+  scale_color_viridis(discrete = TRUE) +
+  geom_text(data = vscores, aes(x = PC1, y = PC2, label = rownames(vscores)), col = 'red') +
+  geom_segment(data = vscores, aes(x = 0, y = 0, xend = PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
+               alpha = 0.75, color = 'grey30') +
+  geom_point(aes(x = PC1*2, y = PC2*2, fill = revisedSpecies, color = revisedSpecies,
+                 shape = phylum), size = 4) +
+  #   geom_text(
+  #      aes(x = PC1, y = PC2),
+  #      label=uscores1$revisedSpecies,
+  #      check_overlap=T
+  #    ) +
+  theme_bw() +
+  theme(strip.text.y = element_text(angle = 0)) +
+  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
+       y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
+
+
+
+
+
+
+###### TESTING MINIMAL FA BY LOOKING AT VECTORS IN PCA (`16:0`, `18:3w3`, `20:4w6`, `22:5w6`)
+###### WITH SI ADDED
+
+### PERMANOVA 
+
+# algal min FA for adonis
+minFA_only <- overlap_species %>%
+  select(`CN ratio`, `d15N`, `d13C`, `16:0`, `18:3w3`, `20:4w6`, `22:5w6`) 
+
+adonis2(abs(minFA_only) ~ revisedSpecies, data = overlap_species, method = 'bray', na.rm = TRUE)
+
+
+# run PCA
+PCA_results <-  rda(minFA_only, scale = TRUE)
+# check that axes are above the mean (per Numerical Ecology)
+ev <- PCA_results$CA$eig
+ev>mean(ev)
+# proportion explained
+barplot(ev, main="eigenvalues", col="bisque", las=2)
+abline(h=mean(ev), col="red")
+legend("topright", "Average eignenvalue", lwd=1, col=2)
+# testing different scalings (1 = good for samples/sites, 2 = good for correlations)
+biplot(PCA_results, scaling=1, main="PCA scaling 1") # scaling 1 for distances between objects
+biplot(PCA_results, main="PCA scaling 2") # correlation biplot, for seeing correlation between response variables (species) see angles. 
+autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
+
+
+# extract PCA coordinates
+uscores <- data.frame(PCA_results$CA$u)
+uscores1 <- inner_join(rownames_to_column(overlap_species), rownames_to_column(data.frame(uscores)), by = "rowname")
+vscores <- data.frame(PCA_results$CA$v)
+# extract explanatory percentages
+PCA_summary <- summary(PCA_results)
+PCA_import <- as.data.frame(PCA_summary[["cont"]][["importance"]])
+var_explained <- PCA_import[2, 1:2]
+
+# make final ggplot figure (scale on points changed to highlight spp differences)
+ggplot(uscores1) + 
+  scale_fill_viridis(discrete = TRUE) +
+  scale_color_viridis(discrete = TRUE) +
+  geom_text(data = vscores, aes(x = PC1, y = PC2, label = rownames(vscores)), col = 'red') +
+  geom_segment(data = vscores, aes(x = 0, y = 0, xend = PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
+               alpha = 0.75, color = 'grey30') +
+  geom_point(aes(x = PC1*2, y = PC2*2, fill = revisedSpecies, color = revisedSpecies,
+                 shape = phylum), size = 4) +
+  #   geom_text(
+  #      aes(x = PC1, y = PC2),
+  #      label=uscores1$revisedSpecies,
+  #      check_overlap=T
+  #    ) +
+  theme_bw() +
+  theme(strip.text.y = element_text(angle = 0)) +
+  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
+       y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
+
+
+
+###### TESTING REDS ONLY ON ALL FA SAMPLES
+
+### PERMANOVA 
+
+# algal red FA for adonis
+redFA_only <- FA_wide %>%
+  filter(phylum == "Rhodophyta") %>%
+  select(`8:0`:`24:1w9`)
+
+adonis2(abs(redFA_only) ~ revisedSpecies, data = filter(FA_wide, phylum == "Rhodophyta"), method = 'bray', na.rm = TRUE)
+
+
+# run PCA
+PCA_results <-  rda(redFA_only, scale = TRUE)
+# check that axes are above the mean (per Numerical Ecology)
+ev <- PCA_results$CA$eig
+ev>mean(ev)
+# proportion explained
+barplot(ev, main="eigenvalues", col="bisque", las=2)
+abline(h=mean(ev), col="red")
+legend("topright", "Average eignenvalue", lwd=1, col=2)
+# testing different scalings (1 = good for samples/sites, 2 = good for correlations)
+biplot(PCA_results, scaling=1, main="PCA scaling 1") # scaling 1 for distances between objects
+biplot(PCA_results, main="PCA scaling 2") # correlation biplot, for seeing correlation between response variables (species) see angles. 
+autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
+
+
+# extract PCA coordinates
+uscores <- data.frame(PCA_results$CA$u)
+uscores1 <- inner_join(rownames_to_column(filter(FA_wide, phylum == "Rhodophyta")), rownames_to_column(data.frame(uscores)), by = "rowname")
+vscores <- data.frame(PCA_results$CA$v)
+# extract explanatory percentages
+PCA_summary <- summary(PCA_results)
+PCA_import <- as.data.frame(PCA_summary[["cont"]][["importance"]])
+var_explained <- PCA_import[2, 1:2]
+
+# make final ggplot figure (scale on points changed to highlight spp differences)
+ggplot(uscores1) + 
+  scale_fill_viridis(discrete = TRUE) +
+  scale_color_viridis(discrete = TRUE) +
+  geom_text(data = vscores, aes(x = PC1, y = PC2, label = rownames(vscores)), col = 'red') +
+  geom_segment(data = vscores, aes(x = 0, y = 0, xend = PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
+               alpha = 0.75, color = 'grey30') +
+  geom_point(aes(x = PC1, y = PC2, fill = revisedSpecies, color = revisedSpecies,
+                 shape = phylum), size = 4) +
+  #   geom_text(
+  #      aes(x = PC1, y = PC2),
+  #      label=uscores1$revisedSpecies,
+  #      check_overlap=T
+  #    ) +
+  theme_bw() +
+  theme(strip.text.y = element_text(angle = 0)) +
+  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
+       y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
+
+
+
+###### TESTING REDS ONLY ON ALL FA SAMPLES minimum data
+
+### PERMANOVA 
+
+# algal red FA for adonis
+redminFA_only <- FA_wide %>%
+  filter(phylum == "Rhodophyta") %>%
+  select(`16:0`, `20:3w3`, `22:3w6`, `22:5w3`, `13:0`, `18:1w7c`)
+
+adonis2(abs(redminFA_only) ~ revisedSpecies, data = filter(FA_wide, phylum == "Rhodophyta"), method = 'bray', na.rm = TRUE)
+
+
+# run PCA
+PCA_results <-  rda(redminFA_only, scale = TRUE)
+# check that axes are above the mean (per Numerical Ecology)
+ev <- PCA_results$CA$eig
+ev>mean(ev)
+# proportion explained
+barplot(ev, main="eigenvalues", col="bisque", las=2)
+abline(h=mean(ev), col="red")
+legend("topright", "Average eignenvalue", lwd=1, col=2)
+# testing different scalings (1 = good for samples/sites, 2 = good for correlations)
+biplot(PCA_results, scaling=1, main="PCA scaling 1") # scaling 1 for distances between objects
+biplot(PCA_results, main="PCA scaling 2") # correlation biplot, for seeing correlation between response variables (species) see angles. 
+autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
+
+
+# extract PCA coordinates
+uscores <- data.frame(PCA_results$CA$u)
+uscores1 <- inner_join(rownames_to_column(filter(FA_wide, phylum == "Rhodophyta")), rownames_to_column(data.frame(uscores)), by = "rowname")
+vscores <- data.frame(PCA_results$CA$v)
+# extract explanatory percentages
+PCA_summary <- summary(PCA_results)
+PCA_import <- as.data.frame(PCA_summary[["cont"]][["importance"]])
+var_explained <- PCA_import[2, 1:2]
+
+# make final ggplot figure (scale on points changed to highlight spp differences)
+ggplot(uscores1) + 
+  scale_fill_viridis(discrete = TRUE) +
+  scale_color_viridis(discrete = TRUE) +
+  geom_text(data = vscores, aes(x = PC1, y = PC2, label = rownames(vscores)), col = 'red') +
+  geom_segment(data = vscores, aes(x = 0, y = 0, xend = PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
+               alpha = 0.75, color = 'grey30') +
+  geom_point(aes(x = PC1, y = PC2, fill = revisedSpecies, color = revisedSpecies,
+                 shape = phylum), size = 4) +
+  #   geom_text(
+  #      aes(x = PC1, y = PC2),
+  #      label=uscores1$revisedSpecies,
+  #      check_overlap=T
+  #    ) +
+  theme_bw() +
+  theme(strip.text.y = element_text(angle = 0)) +
+  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
+       y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
+
+
+###### TESTING REDS ONLY ON ALL FA SAMPLES minimum data and SI
+
+### PERMANOVA 
+
+# algal red FA for adonis
+redminFASI_only <- overlap_species %>%
+  filter(phylum == "Rhodophyta") %>%
+  select(`CN ratio`, `d15N`, `d13C`, `16:0`, `20:3w3`, `22:3w6`, `22:5w3`, `13:0`, `18:1w7c`)
+
+adonis2(abs(redminFASI_only) ~ revisedSpecies, data = filter(overlap_species, phylum == "Rhodophyta"), method = 'bray', na.rm = TRUE)
+
+
+# run PCA
+PCA_results <-  rda(redminFASI_only, scale = TRUE)
+# check that axes are above the mean (per Numerical Ecology)
+ev <- PCA_results$CA$eig
+ev>mean(ev)
+# proportion explained
+barplot(ev, main="eigenvalues", col="bisque", las=2)
+abline(h=mean(ev), col="red")
+legend("topright", "Average eignenvalue", lwd=1, col=2)
+# testing different scalings (1 = good for samples/sites, 2 = good for correlations)
+biplot(PCA_results, scaling=1, main="PCA scaling 1") # scaling 1 for distances between objects
+biplot(PCA_results, main="PCA scaling 2") # correlation biplot, for seeing correlation between response variables (species) see angles. 
+autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
+
+
+# extract PCA coordinates
+uscores <- data.frame(PCA_results$CA$u)
+uscores1 <- inner_join(rownames_to_column(filter(overlap_species, phylum == "Rhodophyta")), rownames_to_column(data.frame(uscores)), by = "rowname")
+vscores <- data.frame(PCA_results$CA$v)
+# extract explanatory percentages
+PCA_summary <- summary(PCA_results)
+PCA_import <- as.data.frame(PCA_summary[["cont"]][["importance"]])
+var_explained <- PCA_import[2, 1:2]
+
+# make final ggplot figure (scale on points changed to highlight spp differences)
+ggplot(uscores1) + 
+  scale_fill_viridis(discrete = TRUE) +
+  scale_color_viridis(discrete = TRUE) +
+  geom_text(data = vscores, aes(x = PC1, y = PC2, label = rownames(vscores)), col = 'red') +
+  geom_segment(data = vscores, aes(x = 0, y = 0, xend = PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
+               alpha = 0.75, color = 'grey30') +
+  geom_point(aes(x = PC1, y = PC2, fill = revisedSpecies, color = revisedSpecies,
+                 shape = phylum), size = 4) +
+  #   geom_text(
+  #      aes(x = PC1, y = PC2),
+  #      label=uscores1$revisedSpecies,
+  #      check_overlap=T
+  #    ) +
+  theme_bw() +
+  theme(strip.text.y = element_text(angle = 0)) +
+  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
+       y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
+
+
+
+###### TESTING REDS ONLY ON ALL SI SAMPLES 
+
+### PERMANOVA 
+
+# algal red SI for adonis
+redminSI_only <- overlap_species %>%
+  filter(phylum == "Rhodophyta") %>%
+  select(`CN ratio`:`d13C`)
+
+adonis2(abs(redminSI_only) ~ revisedSpecies, data = filter(overlap_species, phylum == "Rhodophyta"), method = 'bray', na.rm = TRUE)
+
+
+# run PCA
+PCA_results <-  rda(redminSI_only, scale = TRUE)
+# check that axes are above the mean (per Numerical Ecology)
+ev <- PCA_results$CA$eig
+ev>mean(ev)
+# proportion explained
+barplot(ev, main="eigenvalues", col="bisque", las=2)
+abline(h=mean(ev), col="red")
+legend("topright", "Average eignenvalue", lwd=1, col=2)
+# testing different scalings (1 = good for samples/sites, 2 = good for correlations)
+biplot(PCA_results, scaling=1, main="PCA scaling 1") # scaling 1 for distances between objects
+biplot(PCA_results, main="PCA scaling 2") # correlation biplot, for seeing correlation between response variables (species) see angles. 
+autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
+
+
+# extract PCA coordinates
+uscores <- data.frame(PCA_results$CA$u)
+uscores1 <- inner_join(rownames_to_column(filter(overlap_species, phylum == "Rhodophyta")), rownames_to_column(data.frame(uscores)), by = "rowname")
+vscores <- data.frame(PCA_results$CA$v)
+# extract explanatory percentages
+PCA_summary <- summary(PCA_results)
+PCA_import <- as.data.frame(PCA_summary[["cont"]][["importance"]])
+var_explained <- PCA_import[2, 1:2]
+
+# make final ggplot figure (scale on points changed to highlight spp differences)
+ggplot(uscores1) + 
+  scale_fill_viridis(discrete = TRUE) +
+  scale_color_viridis(discrete = TRUE) +
+  geom_text(data = vscores, aes(x = PC1, y = PC2, label = rownames(vscores)), col = 'red') +
+  geom_segment(data = vscores, aes(x = 0, y = 0, xend = PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
+               alpha = 0.75, color = 'grey30') +
+  geom_point(aes(x = PC1, y = PC2, fill = revisedSpecies, color = revisedSpecies,
+                 shape = phylum), size = 4) +
+  #   geom_text(
+  #      aes(x = PC1, y = PC2),
+  #      label=uscores1$revisedSpecies,
+  #      check_overlap=T
+  #    ) +
+  theme_bw() +
+  theme(strip.text.y = element_text(angle = 0)) +
+  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
+       y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
+
+
 # Proportional stacked barplot of FA composition for each species
 
 # calc mean of each FA for each sp
-FA_means <- all_species %>%
+FA_quartile <- long_species %>%
+  filter(revisedSpecies != "Benthic diatoms") %>%
+  filter(marker %notin% c("d13C", "d15N", "CN ratio")) %>%
+  filter(value != 0)
+summary(FA_quartile$value)
+
+FA_means <- FA_wide %>%
   select(revisedSpecies, phylum, `8:0`:`24:1w9`) %>%
+  filter(revisedSpecies != "Benthic diatoms") %>%
   group_by(phylum, revisedSpecies) %>%
   summarise(across(`8:0`:`24:1w9`, mean)) %>%
   pivot_longer(cols = `8:0`:`24:1w9`, names_to = 'Fatty Acid', values_to = 'value') %>%
-  filter(value >= 0.0468) %>% # 1st quartile of all FA values in dataset
+  filter(value >= 0.05) %>% # 1st quartile of all FA values in dataset
   mutate(phylum = case_when(phylum == "Chlorophyta" ~ "",
                             phylum == "Ochrophyta" ~ "Ochrophyta",
                             phylum == "Rhodophyta" ~ "Rhodophyta"))
+
 
 FA_means %>%
   ggplot() +
@@ -378,25 +1261,51 @@ FA_means %>%
   labs(x = "Species", y = "Mean Proportional Composition") +
   guides(fill = guide_legend(title = "Fatty Acids")) +
   facet_grid(cols = vars(phylum), scales = "free_x", space = "free_x") +
-  theme(axis.text.x = element_text(angle = 270, hjust = 0))
+  theme(axis.text.x = element_text(angle = 270, hjust = 0, vjust = 0.25)) +
+  theme(axis.title.x = element_text(vjust = -1)) +
+  theme(axis.title.y = element_text(vjust = 2.5))
 
+
+
+# MDS of community
+FA_mds <- metaMDS(FA_only)
+FA_mds_points <- FA_mds$points
+FA_mds_points <- data.frame(FA_mds_points)
+plot_data_tax <- data.frame(FA_mds_points, FA_mat[,1:3])
+library(plyr)
+chulls_tax <- ddply(plot_data_tax, .(Habitat), function(df) df[chull(df$MDS1, df$MDS2), ])
+detach(package:plyr)
+plot(FA_mds)
+
+simper_FA <- FA_wide %>%
+  filter(revisedSpecies != "Benthic diatoms") %>%
+  select(`8:0`:`24:1w9`) 
+
+simper(simper_FA)
 
 
 
 # cluster analysis of FA only
 
-Alg_dist <- vegdist(all_species[,24:62])
+no_diatoms_meanFA <- FA_wide %>%
+  select(revisedSpecies, phylum, `8:0`:`24:1w9`) %>%
+  filter(revisedSpecies != "Benthic diatoms") %>%
+  group_by(phylum, revisedSpecies) %>%
+  summarise(across(`8:0`:`24:1w9`, mean)) 
+
+
+Alg_dist <- vegdist(no_diatoms_meanFA[,3:41])
 Alg_clust <- hclust(Alg_dist, method="ward.D2")
-Alg_order <- data.frame(all_species$revisedSpecies, Alg_clust$order)
+Alg_order <- data.frame(no_diatoms_meanFA$revisedSpecies, Alg_clust$order)
 Alg_order <- Alg_order[order(Alg_order$Alg_clust.order), ]
 
 plot(Alg_clust, las = 1, 
      main="Cluster diagram of algae", 
      xlab="Sample", 
      ylab="Euclidean distance",
-     label = Alg_order$all_species.revisedSpecies)
+     label = Alg_order$FA_wide.revisedSpecies)
 
-Alg_clust$labels <- all_species$revisedSpecies
+Alg_clust$labels <- no_diatoms_meanFA$revisedSpecies
 clust_col <- viridis(4, alpha = 1, begin = 0.2, end = 0.8, direction = 1, option = "C")
 
 fviz_dend(x = Alg_clust, cex = 0.8, lwd = 0.8, k = 4, 
@@ -409,7 +1318,13 @@ fviz_dend(x = Alg_clust, cex = 0.8, lwd = 0.8, k = 4,
 
 # cluster analysis of SI only
 
-Alg_dist <- vegdist(abs(SI_wide[,21:23]))
+no_diatoms_meanSI <- SI_wide %>%
+  select(revisedSpecies, phylum, `CN ratio`:`d13C`) %>%
+  filter(revisedSpecies != "Benthic diatoms") %>%
+  group_by(phylum, revisedSpecies) %>%
+  summarise(across(`CN ratio`:`d13C`, mean)) 
+
+Alg_dist <- vegdist(abs(no_diatoms_meanSI[,3:5]))
 Alg_clust <- hclust(Alg_dist, method="ward.D2")
 Alg_order <- data.frame(SI_wide$revisedSpecies, Alg_clust$order)
 Alg_order <- Alg_order[order(Alg_order$Alg_clust.order), ]
@@ -418,9 +1333,9 @@ plot(Alg_clust, las = 1,
      main="Cluster diagram of algae", 
      xlab="Sample", 
      ylab="Euclidean distance",
-     label = Alg_order$all_species.revisedSpecies)
+     label = Alg_order$FA_wide.revisedSpecies)
 
-Alg_clust$labels <- all_species$revisedSpecies
+Alg_clust$labels <- no_diatoms_meanSI$revisedSpecies
 clust_col <- viridis(4, alpha = 1, begin = 0.2, end = 0.8, direction = 1, option = "C")
 
 fviz_dend(x = Alg_clust, cex = 0.8, lwd = 0.8, k = 4, 
