@@ -4,7 +4,7 @@
 # Script Created 2023-03-21                                                      ##
 # Data source: Antarctic Gradients 2019                                          ##
 # R code prepared by Ross Whippo                                                 ##
-# Last updated 2023-03-21                                                        ##
+# Last updated 2023-04-01                                                        ##
 #                                                                                ##
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -58,6 +58,7 @@ library(psych) # pairs panel
 library(ggfortify) # PCA visualizations
 library(stringi) # order FA's in columns
 library(factoextra) # clustering dendrogram
+library(ggpubr)
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # LOAD FUNCTIONS                                                               ####
@@ -113,7 +114,7 @@ FA_means <- all_species %>%
 FA_means <- FA_means %>%
   select(revisedSpecies, phylum, `8:0`:`24:1w9`) %>%
   group_by(phylum, revisedSpecies) %>%
-  filter(`8:0` != 0) %>%
+  filter(!is.na(`8:0`)) %>%
   summarise(across(`8:0`:`24:1w9`, list(mean = mean, sd = sd))) 
 FA_means <- FA_means %>%
   mutate(across(where(is.numeric), round, 3))
@@ -604,7 +605,7 @@ ggplot(uscores1) +
 # algal FA for adonis
 FA_only <- FA_wide %>%
   filter(revisedSpecies != "Benthic diatoms") %>%
-  select(`16:0`, `18:3w3`, `20:4w6`, `18:1w9c`, `20:3w3`,`20:5w3`, `22:3w6`, `15:0`) 
+  select(`16:0`, `16:1w7c`, `18:3w3`, `18:1w9c`, `20:4w6`,`20:5w3`) 
 
 adonis2(abs(FA_only) ~ revisedSpecies, data = filter(FA_wide, revisedSpecies != "Benthic diatoms"), method = 'bray', na.rm = TRUE)
 
@@ -956,7 +957,7 @@ ggplot(uscores1) +
 
 # algal min FA for adonis
 minFA_only <- overlap_species %>%
-  select(`CN ratio`, `d15N`, `d13C`, `16:0`, `18:3w3`, `20:4w6`, `22:5w6`) 
+  select(`CN ratio`, `d15N`, `d13C`, `16:0`, `16:1w7c`, `20:5w3`) 
 
 adonis2(abs(minFA_only) ~ revisedSpecies, data = overlap_species, method = 'bray', na.rm = TRUE)
 
@@ -1281,8 +1282,8 @@ simper_FA <- FA_wide %>%
   filter(revisedSpecies != "Benthic diatoms") %>%
   select(`8:0`:`24:1w9`) 
 
-simper(simper_FA)
-
+full_algal_simper <- simper(simper_FA)
+summary(full_algal_simper)
 
 
 # cluster analysis of FA only
@@ -1346,7 +1347,276 @@ fviz_dend(x = Alg_clust, cex = 0.8, lwd = 0.8, k = 4,
           type = "circular",
           ggtheme = theme_bw())
 
+
+
+##### What are the diffs if any between published and non-published FA per phylum?
+
+
   
+  # calc mean and sd of each FA for each sp
+  FA_means <- all_species %>%
+  filter(revisedSpecies != "Benthic diatoms") %>%
+    mutate(published = case_when(revisedSpecies == "Lambia antarctica" ~ "published",
+                                 revisedSpecies == "Ascoseira mirabilis" ~ "published",
+                                 revisedSpecies == "Desmarestia anceps" ~ "published",
+                                 revisedSpecies == "Desmarestia antarctica" ~ "published",
+                                 revisedSpecies == "Desmarestia menziesii" ~ "published",
+                                 revisedSpecies == "Himantothallus grandifolius" ~ "published",
+                                 revisedSpecies == "Adenocystis utricularis" ~ "published",
+                                 revisedSpecies == "Delisea pulchra" ~ "published",
+                                 revisedSpecies == "Georgiella confluens" ~ "published",
+                                 revisedSpecies == "Myriogramme smithii" ~ "published",
+                                 revisedSpecies == "Myriogramme manginii" ~ "published",
+                                 revisedSpecies == "Pantoneura plocamioides" ~ "published",
+                                 revisedSpecies == "Sarcopeltis antarctica" ~ "published",
+                                 revisedSpecies == "Iridaea cordata" ~ "published",
+                                 revisedSpecies == "Curdiea racovitzae" ~ "published",
+                                 revisedSpecies == "Palmaria decipiens" ~ "published",
+                                 revisedSpecies == "Plocamium sp." ~ "published",
+                                 revisedSpecies == "Hymenocladiopsis sp." ~ "published",
+                                 revisedSpecies == "Cystosphaera jacquinotii" ~ "unpublished",
+                                 revisedSpecies == "Microzonia australe" ~ "unpublished",
+                                 revisedSpecies == "Ballia callitricha" ~ "unpublished",
+                                 revisedSpecies == "Porphyra plocamiestris" ~ "unpublished",
+                                 revisedSpecies == "Paraglossum salicifolium" ~ "unpublished",
+                                 revisedSpecies == "Picconiella plumosa" ~ "unpublished",
+                                 revisedSpecies == "Meridionella antarctica" ~ "unpublished",
+                                 revisedSpecies == "Austropugetia crassa" ~ "unpublished",
+                                 revisedSpecies == "Callophyllis atrosanguinea" ~ "unpublished",
+                                 revisedSpecies == "Gymnogongrus antarcticus" ~ "unpublished",
+                                 revisedSpecies == "Phyllophora antarctica" ~ "unpublished",
+                                 revisedSpecies == "Pachymenia orbicularis" ~ "unpublished",
+                                 revisedSpecies == "Trematocarpus antarcticus" ~ "unpublished")) %>%
+  mutate(across(c(`8:0`:`24:1w9`), function(x) x*100))
+FA_means <- FA_means %>%
+  select(revisedSpecies, phylum, published, `8:0`:`24:1w9`) %>%
+  group_by(phylum, published) %>%
+  filter(!is.na(`8:0`)) %>%
+  summarise(across(`8:0`:`24:1w9`, list(mean = mean))) 
+top_FA <- FA_means %>%
+  pivot_longer(`8:0_mean`:`24:1w9_mean`, names_to = "FA", values_to = "Percent") %>%
+  arrange(desc(Percent)) %>% 
+  group_by(phylum, published) %>%
+  slice(1:5) %>%
+  mutate(rank = c(1:5)) %>%
+  pivot_wider(names_from = "rank", values_from = c("FA", "Percent"))
+
+# grand means
+
+FA_means <- FA_means %>%
+  select(revisedSpecies, phylum, `8:0`:`24:1w9`) %>%
+  group_by(phylum) %>%
+  filter(!is.na(`8:0`)) %>%
+  summarise(across(`8:0`:`24:1w9`, list(mean = mean))) 
+top_FA <- FA_means %>%
+  pivot_longer(`8:0_mean`:`24:1w9_mean`, names_to = "FA", values_to = "Percent") %>%
+  arrange(desc(Percent)) %>% 
+  group_by(phylum) %>%
+  slice(1:10) %>%
+  mutate(rank = c(1:10)) %>%
+  pivot_wider(names_from = "rank", values_from = c("FA", "Percent"))
+
+
+
+
+###### FA VALUES ONLY NO DIATOMS, ORDER LEVEL ANALYSIS
+# algal FA for adonis
+FA_only <- FA_wide %>%
+  filter(revisedSpecies != "Benthic diatoms") %>%
+  select(`8:0`:`24:1w9`) 
+FA_tax <- FA_wide %>%
+  filter(revisedSpecies != "Benthic diatoms") %>%
+  mutate(order = case_when(revisedSpecies == "Lambia antarctica" ~ "Bryopsidales",
+                           revisedSpecies == "Ascoseira mirabilis" ~ "Ascoseirales",
+                           revisedSpecies == "Desmarestia anceps" ~ "Desmarestiales",
+                           revisedSpecies == "Desmarestia antarctica" ~ "Desmarestiales",
+                           revisedSpecies == "Desmarestia menziesii" ~ "Desmarestiales",
+                           revisedSpecies == "Himantothallus grandifolius" ~ "Desmarestiales",
+                           revisedSpecies == "Adenocystis utricularis" ~ "Ectocarpales",
+                           revisedSpecies == "Cystosphaera jacquinotii" ~ "Fucales",
+                           revisedSpecies == "Microzonia australe" ~ "Syringodermatales",
+                           revisedSpecies == "Ballia callitricha" ~ "Balliales",
+                           revisedSpecies == "Porphyra plocamiestris" ~ "Bangiales",
+                           revisedSpecies == "Delisea pulchra" ~ "Bonnemaisoniales",
+                           revisedSpecies == "Georgiella confluens" ~ "Ceramiales",
+                           revisedSpecies == "Myriogramme smithii" ~ "Ceramiales",
+                           revisedSpecies == "Myriogramme manginii" ~ "Ceramiales",
+                           revisedSpecies == "Pantoneura plocamioides" ~ "Ceramiales",
+                           revisedSpecies == "Paraglossum salicifolium" ~ "Ceramiales",
+                           revisedSpecies == "Picconiella plumosa" ~ "Ceramiales",
+                           revisedSpecies == "Meridionella antarctica" ~ "Gigartinales",
+                           revisedSpecies == "Sarcopeltis antarctica" ~ "Gigartinales",
+                           revisedSpecies == "Iridaea cordata" ~ "Gigartinales",
+                           revisedSpecies == "Austropugetia crassa" ~ "Gigartinales",
+                           revisedSpecies == "Callophyllis atrosanguinea" ~ "Gigartinales",
+                           revisedSpecies == "Gymnogongrus antarcticus" ~ "Gigartinales",
+                           revisedSpecies == "Phyllophora antarctica" ~ "Gigartinales",
+                           revisedSpecies == "Curdiea racovitzae" ~ "Gracilariales",
+                           revisedSpecies == "Pachymenia orbicularis" ~ "Halymeniales",
+                           revisedSpecies == "Palmaria decipiens" ~ "Palmariales",
+                           revisedSpecies == "Plocamium sp." ~ "Plocamiales",
+                           revisedSpecies == "Trematocarpus antarcticus" ~ "Plocamiales",
+                           revisedSpecies == "Hymenocladiopsis sp." ~ "Rhodymeniales")) %>%
+  mutate(family = case_when(revisedSpecies == "Lambia antarctica" ~ "Bryopsidaceae",
+                           revisedSpecies == "Ascoseira mirabilis" ~ "Ascoseiraceae",
+                           revisedSpecies == "Desmarestia anceps" ~ "Desmarestiaceae",
+                           revisedSpecies == "Desmarestia antarctica" ~ "Desmarestiaceae",
+                           revisedSpecies == "Desmarestia menziesii" ~ "Desmarestiaceae",
+                           revisedSpecies == "Himantothallus grandifolius" ~ "Desmarestiaceae",
+                           revisedSpecies == "Adenocystis utricularis" ~ "Adenocystaceae",
+                           revisedSpecies == "Cystosphaera jacquinotii" ~ "Seirococcaceae",
+                           revisedSpecies == "Microzonia australe" ~ "Syringodermataceae",
+                           revisedSpecies == "Ballia callitricha" ~ "Balliaceae",
+                           revisedSpecies == "Porphyra plocamiestris" ~ "Bangiaceae",
+                           revisedSpecies == "Delisea pulchra" ~ "Bonnemaisoniaceae",
+                           revisedSpecies == "Georgiella confluens" ~ "Callithamniaceae",
+                           revisedSpecies == "Myriogramme smithii" ~ "Delesseriaceae",
+                           revisedSpecies == "Myriogramme manginii" ~ "Delesseriaceae",
+                           revisedSpecies == "Pantoneura plocamioides" ~ "Delesseriaceae",
+                           revisedSpecies == "Paraglossum salicifolium" ~ "Delesseriaceae",
+                           revisedSpecies == "Picconiella plumosa" ~ "Rhodomelaceae",
+                           revisedSpecies == "Meridionella antarctica" ~ "Cystocloniaceae",
+                           revisedSpecies == "Sarcopeltis antarctica" ~ "Gigartinaceae",
+                           revisedSpecies == "Iridaea cordata" ~ "Gigartinaceae",
+                           revisedSpecies == "Austropugetia crassa" ~ "Kallymeniaceae",
+                           revisedSpecies == "Callophyllis atrosanguinea" ~ "Kallymeniaceae",
+                           revisedSpecies == "Gymnogongrus antarcticus" ~ "Phyllophoraceae",
+                           revisedSpecies == "Phyllophora antarctica" ~ "Phyllophoraceae",
+                           revisedSpecies == "Curdiea racovitzae" ~ "Gracilariaceae",
+                           revisedSpecies == "Pachymenia orbicularis" ~ "Halymeniaceae",
+                           revisedSpecies == "Palmaria decipiens" ~ "Palmariaceae",
+                           revisedSpecies == "Plocamium sp." ~ "Plocamiaceae",
+                           revisedSpecies == "Trematocarpus antarcticus" ~ "Sarcodiaceae",
+                           revisedSpecies == "Hymenocladiopsis sp." ~ "Fryeellaceae")) 
+  
+
+### PERMANOVA 
+
+
+adonis2(abs(FA_only) ~ revisedSpecies, data = filter(FA_wide, revisedSpecies != "Benthic diatoms"), method = 'bray', na.rm = TRUE)
+
+# PCA
+
+
+# run PCA
+PCA_results <-  rda(FA_only, scale = TRUE)
+# check that axes are above the mean (per Numerical Ecology)
+ev <- PCA_results$CA$eig
+ev>mean(ev)
+# proportion explained
+barplot(ev, main="eigenvalues", col="bisque", las=2)
+abline(h=mean(ev), col="red")
+legend("topright", "Average eignenvalue", lwd=1, col=2)
+# testing different scalings (1 = good for samples/sites, 2 = good for correlations)
+biplot(PCA_results, scaling=1, main="PCA scaling 1") # scaling 1 for distances between objects
+biplot(PCA_results, main="PCA scaling 2") # correlation biplot, for seeing correlation between response variables (species) see angles. 
+autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
+
+
+# extract PCA coordinates
+uscores <- data.frame(PCA_results$CA$u)
+uscores1 <- inner_join(rownames_to_column(FA_tax), rownames_to_column(data.frame(uscores)), by = "rowname")
+vscores <- data.frame(PCA_results$CA$v)
+# extract explanatory percentages
+PCA_summary <- summary(PCA_results)
+PCA_import <- as.data.frame(PCA_summary[["cont"]][["importance"]])
+var_explained <- PCA_import[2, 1:2]
+
+# make final ggplot figure
+ggplot(uscores1) + 
+  scale_fill_viridis(discrete = TRUE) +
+  scale_color_viridis(discrete = TRUE) +
+  geom_text(data = vscores, aes(x = PC1, y = PC2, label = rownames(vscores)), col = 'red') +
+  geom_segment(data = vscores, aes(x = 0, y = 0, xend = PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
+               alpha = 0.75, color = 'grey30') +
+  geom_point(aes(x = PC1, y = PC2, fill = family, color = family,
+                 shape = phylum), size = 4) +
+  #   geom_text(
+  #      aes(x = PC1, y = PC2),
+  #      label=uscores1$revisedSpecies,
+  #      check_overlap=T
+  #    ) +
+  theme_bw() +
+  theme(strip.text.y = element_text(angle = 0)) +
+  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
+       y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
+
+
+
+
+
+
+
+######## nMDS
+
+FA_matrix <- FA_only
+
+# run the nMDS
+FA_mds <- metaMDS(FA_matrix)
+# extract the 'points' from the nMDS that you will plot in ggplot2
+FA_mds_points <- FA_mds$points
+# turn those plot points into a dataframe that ggplot2 can read
+FA_mds_points <- data.frame(FA_mds_points)
+# join your plot points with your summed species observations from each habitat type
+plot_data_tax <- data.frame(FA_mds_points, FA_tax[,c(7,8,63,64)])
+plot_data_tax <- plot_data_tax %>%
+  rename("division" = "phylum")
+# IF you want to add hulls around your points (totally optional), use this code
+# first you have to load plyr (DO NOT LOAD PRIOR TO THIS. It tends to mess with tidyverse functions)
+library(plyr)
+# create the list of points that will connect the 'hulls' together from your nMDS point data
+chulls_tax <- ddply(plot_data_tax, .(Habitat), function(df) df[chull(df$MDS1, df$MDS2), ])
+# DETACH PLYR so it won't mess with anything!
+detach(package:plyr)
+
+# run the ggplot
+phylum_plot <- 
+  ggplot(plot_data_tax, aes(x=MDS1, y=MDS2, # note pch and color are linked to *factors*
+                          color = division)) +  
+  theme_classic() + # optional, I just like this theme
+  geom_point(size = 2) + # set size of points to whatever you want
+ # geom_polygon(data=chulls_tax, aes(x=MDS1, y=MDS2, group=Habitat), fill=NA) + # optional 'hulls' around points
+  scale_color_viridis(discrete = TRUE, begin = 0.2, end = 0.9, option = "G") # my favorite color-blind and b&w friendly palette, look at the viridis package for more details 
+phylum_leg <- as_ggplot(get_legend(phylum_plot))
+
+order_plot <- 
+  ggplot(plot_data_tax, aes(x=MDS1, y=MDS2, # note pch and color are linked to *factors*
+                                         color = order)) +  
+  theme_classic() + # optional, I just like this theme
+  geom_point(size = 2) + # set size of points to whatever you want
+    guides(color=guide_legend(ncol=2)) +
+  # geom_polygon(data=chulls_tax, aes(x=MDS1, y=MDS2, group=Habitat), fill=NA) + # optional 'hulls' around points
+  scale_color_viridis(discrete = TRUE, begin = 0.1, end = 0.9, option = "B") # my favorite color-blind and b&w friendly palette, look at the viridis package for more details 
+order_leg <- as_ggplot(get_legend(order_plot))
+
+
+family_plot <- 
+  ggplot(plot_data_tax, aes(x=MDS1, y=MDS2, # note pch and color are linked to *factors*
+                                         color = family)) +  
+  theme_classic() + # optional, I just like this theme
+  geom_point(size = 2) + # set size of points to whatever you want
+  # geom_polygon(data=chulls_tax, aes(x=MDS1, y=MDS2, group=Habitat), fill=NA) + # optional 'hulls' around points
+  scale_color_viridis(discrete = TRUE, begin = 0.1, end = 0.9, option = "H") # my favorite color-blind and b&w friendly palette, look at the viridis package for more details 
+family_leg <- as_ggplot(get_legend(family_plot))
+
+FigureMDS <- ggarrange(ggarrange(phylum_plot, order_plot, family_plot,
+                     labels = c("A", "B", "C"),
+                     ncol = 1, nrow = 3,
+                     legend = "none"), 
+                     ggarrange(phylum_leg, order_leg, family_leg,
+                               ncol = 1, nrow = 3, align = "v",
+                               legend = "none"), 
+                     ncol = 2, nrow = 1, legend = "none")
+FigureMDS
+
+# 800 x 1200
+
+annotate_figure(FigureMDS, top = text_grob("2D stress = 0.12", size = 10))
+
+# best size: ~630x700
+
+
+
 
 ####
 #<<<<<<<<<<<<<<<<<<<<<<<<<<END OF SCRIPT>>>>>>>>>>>>>>>>>>>>>>>>#
@@ -1776,4 +2046,33 @@ pairs.panels(all_site_reduced[,2:9])
 # 
 
 
+# FIXING TABLE ERROR FOR SUPP 3
 
+# calc mean and sd of each FA for each sp
+FA_means <- all_species %>%
+  filter(revisedSpecies != "Benthic diatoms") %>%
+  mutate(across(c(`8:0`:`24:1w9`), function(x) x*100)) 
+FA_means <- FA_means %>%
+  select(revisedSpecies, phylum, `8:0`:`24:1w9`) %>%
+  group_by(phylum, revisedSpecies) %>%
+  filter(!is.na(`8:0`)) %>%
+  summarise(across(`8:0`:`24:1w9`, list(mean = mean, sd = sd))) 
+FA_means <- FA_means %>%
+  mutate(across(where(is.numeric), round, 3))
+FA_means <- as.data.frame(t(FA_means)) 
+colnames(FA_means) <- FA_means[2,]
+
+FA_means <- FA_means %>%
+  select(`Curdiea racovitzae`, `Desmarestia anceps`, `Desmarestia antarctica`,
+         `Georgiella confluens`, `Meridionella antarctica`, `Pachymenia orbicularis`,
+         `Picconiella plumosa`)
+FA_means <- rownames_to_column(FA_means)
+FA_redMean <- FA_means %>%
+  filter(grepl('mean', rowname))
+FA_redSD <- FA_means %>%
+  filter(grepl('sd', rowname))
+FA_redSD <- as.data.frame(lapply(FA_redSD, function(x) paste("±", x, sep=" ")))
+
+
+write_csv(FA_redMean, "Means.csv")
+write_csv(FA_redSD, "SD.csv")
