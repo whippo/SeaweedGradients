@@ -101,319 +101,229 @@ FA_wide <- all_species %>%
 
 
 
+
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# DATA SUMMARY                                                                 ####
+# FIGURE 2                                                                     ####
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-###### BIOMARKER VALUES FOR TABLE
 
-# calc mean and sd of each FA for each sp
-FA_means <- all_species %>%
+
+# Proportional stacked barplot of FA composition for each species
+
+# calc mean of each FA for each sp
+FA_quartile <- long_species %>%
   filter(revisedSpecies != "Benthic diatoms") %>%
-  mutate(across(c(`8:0`:`24:1w9`), function(x) x*100)) 
-FA_means <- FA_means %>%
+  filter(marker %notin% c("d13C", "d15N", "CN ratio")) %>%
+  filter(value != 0)
+summary(FA_quartile$value)
+
+FA_means <- FA_wide %>%
   select(revisedSpecies, phylum, `8:0`:`24:1w9`) %>%
+  filter(revisedSpecies != "Benthic diatoms") %>%
   group_by(phylum, revisedSpecies) %>%
-  filter(!is.na(`8:0`)) %>%
-  summarise(across(`8:0`:`24:1w9`, list(mean = mean, sd = sd))) 
-FA_means <- FA_means %>%
-  mutate(across(where(is.numeric), round, 3))
-FA_means <- as.data.frame(t(FA_means)) 
-colnames(FA_means) <- FA_means[2,]
+  summarise(across(`8:0`:`24:1w9`, mean)) %>%
+  pivot_longer(cols = `8:0`:`24:1w9`, names_to = 'Fatty Acid', values_to = 'value') %>%
+  filter(value >= 0.05) %>% # 1st quartile of all FA values in dataset
+  mutate(phylum = case_when(phylum == "Chlorophyta" ~ "",
+                            phylum == "Ochrophyta" ~ "Ochrophyta",
+                            phylum == "Rhodophyta" ~ "Rhodophyta"))
 
 
-# calc mean and sd of each SI for each sp
+FA_means %>%
+  ggplot() +
+  geom_col(aes(x = revisedSpecies, y = value, fill = `Fatty Acid`), position = "fill") +
+  scale_fill_viridis(discrete = TRUE, option = 6) +
+  theme_bw() +
+  labs(x = "Species", y = "Mean Proportional Composition") +
+  guides(fill = guide_legend(title = "Fatty Acids")) +
+  facet_grid(cols = vars(phylum), scales = "free_x", space = "free_x") +
+  theme(axis.text.x = element_text(angle = 270, hjust = 0, vjust = 0.25, face = "italic")) +
+  theme(axis.title.x = element_text(vjust = -1)) +
+  theme(axis.title.y = element_text(vjust = 2.5))
 
-SI_means <- all_species %>%
-  select(revisedSpecies, phylum, `CN ratio`:`d13C`) %>%
-  filter(!is.na(`CN ratio`)) %>%
+# size = 10x6
+
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# FIGURE 3                                                                     ####
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+# cluster analysis of FA only
+
+no_diatoms_meanFA <- FA_wide %>%
+  select(revisedSpecies, phylum, `8:0`:`24:1w9`) %>%
+  filter(revisedSpecies != "Benthic diatoms") %>%
   group_by(phylum, revisedSpecies) %>%
-  summarise(across(`CN ratio`:`d13C`, list(mean = mean, sd = sd)))
-SI_means <- as.data.frame(t(SI_means)) 
-colnames(SI_means) <- SI_means[2,]
-
-marker_means <- FA_means %>%
-  bind_rows(SI_means[3:8,]) 
-marker_means <- marker_means %>% 
-  replace(is.na(.), "-") %>%
-  rownames_to_column()
-
-# write_csv(marker_means, "marker_means.csv")
+  summarise(across(`8:0`:`24:1w9`, mean)) 
 
 
-###### OVERLAPPING SAMPLES no diatoms
+Alg_dist <- vegdist(no_diatoms_meanFA[,3:42])
+Alg_clust <- hclust(Alg_dist, method="ward.D2")
+Alg_order <- data.frame(no_diatoms_meanFA$revisedSpecies, Alg_clust$order)
+Alg_order <- Alg_order[order(Alg_order$Alg_clust.order), ]
+
+plot(Alg_clust, las = 1, 
+     main="Cluster diagram of algae", 
+     xlab="Sample", 
+     ylab="Euclidean distance",
+     label = Alg_order$FA_wide.revisedSpecies)
+
+Alg_clust$labels <- no_diatoms_meanFA$revisedSpecies
+clust_col <- viridis(4, alpha = 1, begin = 0.2, end = 0.8, direction = 1, option = "C")
+
+fviz_dend(x = Alg_clust, cex = 0.8, lwd = 0.8, k = 4, 
+          k_colors = clust_col,
+          rect = TRUE, 
+          rect_border = "jco", 
+          rect_fill = TRUE,
+          type = "circular",
+          ggtheme = theme_bw())
+
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# FIGURE 4                                                                     ####
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
-
-### PERMANOVA 
-
-# algal FA for adonis
-marker_only <- overlap_species %>%
-  filter(revisedSpecies != "Benthic diatoms") %>%
-  select(`CN ratio`:`24:1w9`) 
-
-adonis2(abs(marker_only) ~ revisedSpecies, data = filter(overlap_species, revisedSpecies != "Benthic diatoms"), method = 'bray', na.rm = TRUE)
-
-# run PCA
-PCA_results <-  rda(marker_only, scale = TRUE)
-# check that axes are above the mean (per Numerical Ecology)
-ev <- PCA_results$CA$eig
-ev>mean(ev)
-# proportion explained
-barplot(ev, main="eigenvalues", col="bisque", las=2)
-abline(h=mean(ev), col="red")
-legend("topright", "Average eignenvalue", lwd=1, col=2)
-# testing different scalings (1 = good for samples/sites, 2 = good for correlations)
-biplot(PCA_results, scaling=1, main="PCA scaling 1") # scaling 1 for distances between objects
-biplot(PCA_results, main="PCA scaling 2") # correlation biplot, for seeing correlation between response variables (species) see angles. 
-autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
-
-
-# extract PCA coordinates
-uscores <- data.frame(PCA_results$CA$u)
-uscores1 <- inner_join(rownames_to_column(filter(overlap_species, revisedSpecies != "Benthic diatoms")), rownames_to_column(data.frame(uscores)), by = "rowname")
-vscores <- data.frame(PCA_results$CA$v)
-# extract explanatory percentages
-PCA_summary <- summary(PCA_results)
-PCA_import <- as.data.frame(PCA_summary[["cont"]][["importance"]])
-var_explained <- PCA_import[2, 1:2]
-
-# make final ggplot figure
-ggplot(uscores1) + 
-  scale_fill_viridis(discrete = TRUE) +
-  scale_color_viridis(discrete = TRUE) +
-  geom_text(data = vscores, aes(x = -PC1, y = PC2, label = rownames(vscores)), col = 'red') +
-  geom_segment(data = vscores, aes(x = 0, y = 0, xend = -PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
-               alpha = 0.75, color = 'grey30') +
-  geom_point(aes(x = -PC1, y = PC2, fill = revisedSpecies, color = revisedSpecies,
-                 shape = phylum), size = 4) +
-  theme_bw() +
-  theme(strip.text.y = element_text(angle = 0)) +
-  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
-     y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
-
-
-
-##### WITHOUT DIATOMS
-
-### PERMANOVA 
-
-# algal FA for adonis
-marker_only <- overlap_species %>%
-  filter(revisedSpecies != "Benthic diatoms") %>%
-  select(`CN ratio`:`24:1w9`) 
-
-adonis2(abs(marker_only) ~ revisedSpecies, data = filter(overlap_species, revisedSpecies != "Benthic diatoms"), method = 'bray', na.rm = TRUE)
-
-# run PCA
-PCA_results <-  rda(marker_only, scale = TRUE)
-# check that axes are above the mean (per Numerical Ecology)
-ev <- PCA_results$CA$eig
-ev>mean(ev)
-# proportion explained
-barplot(ev, main="eigenvalues", col="bisque", las=2)
-abline(h=mean(ev), col="red")
-legend("topright", "Average eignenvalue", lwd=1, col=2)
-# testing different scalings (1 = good for samples/sites, 2 = good for correlations)
-biplot(PCA_results, scaling=1, main="PCA scaling 1") # scaling 1 for distances between objects
-biplot(PCA_results, main="PCA scaling 2") # correlation biplot, for seeing correlation between response variables (species) see angles. 
-autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
-
-
-# extract PCA coordinates
-uscores <- data.frame(PCA_results$CA$u)
-uscores1 <- inner_join(rownames_to_column(filter(overlap_species, revisedSpecies != "Benthic diatoms")), rownames_to_column(data.frame(uscores)), by = "rowname")
-vscores <- data.frame(PCA_results$CA$v)
-# extract explanatory percentages
-PCA_summary <- summary(PCA_results)
-PCA_import <- as.data.frame(PCA_summary[["cont"]][["importance"]])
-var_explained <- PCA_import[2, 1:2]
-
-# make final ggplot figure
-ggplot(uscores1) + 
-  scale_fill_viridis(discrete = TRUE) +
-  scale_color_viridis(discrete = TRUE) +
-  geom_text(data = vscores, aes(x = PC1, y = PC2, label = rownames(vscores)), col = 'red') +
-  geom_segment(data = vscores, aes(x = 0, y = 0, xend = PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
-               alpha = 0.75, color = 'grey30') +
-  geom_point(aes(x = PC1, y = PC2, fill = revisedSpecies, color = revisedSpecies,
-                 shape = phylum), size = 4) +
-  theme_bw() +
-  theme(strip.text.y = element_text(angle = 0)) +
-  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
-       y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
-
-
-
-
-
-
-###### SI VALUES ONLY
-
-### PERMANOVA 
-
-# algal SI for adonis
-SI_only <- SI_wide %>%
-  select(`CN ratio`:d13C)
-
-adonis2(abs(SI_only) ~ revisedSpecies, data = SI_wide, method = 'bray', na.rm = TRUE)
-
-# run PCA
-PCA_results <-  rda(SI_wide[,c(21:23)], scale = TRUE)
-# check that axes are above the mean (per Numerical Ecology)
-ev <- PCA_results$CA$eig
-ev>mean(ev)
-# proportion explained
-barplot(ev, main="eigenvalues", col="bisque", las=2)
-abline(h=mean(ev), col="red")
-legend("topright", "Average eignenvalue", lwd=1, col=2)
-# testing different scalings (1 = good for samples/sites, 2 = good for correlations)
-biplot(PCA_results, scaling=1, main="PCA scaling 1") # scaling 1 for distances between objects
-biplot(PCA_results, main="PCA scaling 2") # correlation biplot, for seeing correlation between response variables (species) see angles. 
-autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
-
-
-# extract PCA coordinates
-uscores <- data.frame(PCA_results$CA$u)
-uscores1 <- inner_join(rownames_to_column(SI_wide), rownames_to_column(data.frame(uscores)), by = "rowname")
-vscores <- data.frame(PCA_results$CA$v)
-# extract explanatory percentages
-PCA_summary <- summary(PCA_results)
-PCA_import <- as.data.frame(PCA_summary[["cont"]][["importance"]])
-var_explained <- PCA_import[2, 1:2]
-
-# make final ggplot figure (Points scaled by 1.5)
-ggplot(uscores1) + 
-  scale_fill_viridis(discrete = TRUE) +
-  scale_color_viridis(discrete = TRUE) +
-  geom_text(data = vscores, aes(x = PC1, y = PC2, label = rownames(vscores)), col = 'red') +
-  geom_segment(data = vscores, aes(x = 0, y = 0, xend = PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
-               alpha = 0.75, color = 'grey30') +
-  geom_point(aes(x = PC1*1.5, y = PC2*1.5, fill = revisedSpecies, color = revisedSpecies,
-                 shape = phylum), size = 4) +
-  theme_bw() +
-  theme(strip.text.y = element_text(angle = 0)) +
-  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
-       y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
-
-
-
-###### SI VALUES ONLY no diatoms
-
-### PERMANOVA 
-
-# algal SI for adonis
-SI_only <- SI_wide %>%
-  filter(revisedSpecies != "Benthic diatoms") %>%
-  select(`CN ratio`:d13C) 
-
-adonis2(abs(SI_only) ~ revisedSpecies, data = filter(SI_wide, revisedSpecies != "Benthic diatoms"), method = 'bray', na.rm = TRUE)
-
-# run PCA
-PCA_results <-  rda(SI_wide[,c(21:23)], scale = TRUE)
-# check that axes are above the mean (per Numerical Ecology)
-ev <- PCA_results$CA$eig
-ev>mean(ev)
-# proportion explained
-barplot(ev, main="eigenvalues", col="bisque", las=2)
-abline(h=mean(ev), col="red")
-legend("topright", "Average eignenvalue", lwd=1, col=2)
-# testing different scalings (1 = good for samples/sites, 2 = good for correlations)
-biplot(PCA_results, scaling=1, main="PCA scaling 1") # scaling 1 for distances between objects
-biplot(PCA_results, main="PCA scaling 2") # correlation biplot, for seeing correlation between response variables (species) see angles. 
-autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
-
-
-# extract PCA coordinates
-uscores <- data.frame(PCA_results$CA$u)
-uscores1 <- inner_join(rownames_to_column(filter(SI_wide, revisedSpecies != "Benthic diatoms")), rownames_to_column(data.frame(uscores)), by = "rowname")
-vscores <- data.frame(PCA_results$CA$v)
-# extract explanatory percentages
-PCA_summary <- summary(PCA_results)
-PCA_import <- as.data.frame(PCA_summary[["cont"]][["importance"]])
-var_explained <- PCA_import[2, 1:2]
-
-# make final ggplot figure (Points scaled by 1.5)
-ggplot(uscores1) + 
-  scale_fill_viridis(discrete = TRUE) +
-  scale_color_viridis(discrete = TRUE) +
-  geom_text(data = vscores, aes(x = PC1, y = PC2, label = rownames(vscores)), col = 'red') +
-  geom_segment(data = vscores, aes(x = 0, y = 0, xend = PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
-               alpha = 0.75, color = 'grey30') +
-  geom_point(aes(x = PC1*1.5, y = PC2*1.5, fill = revisedSpecies, color = revisedSpecies,
-                 shape = phylum), size = 4) +
-  theme_bw() +
-  theme(strip.text.y = element_text(angle = 0)) +
-  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
-       y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
-
-
-
-
-
-
-
-###### FA VALUES ONLY
-
-
-
-### PERMANOVA 
-
+######## nMDS
 # algal FA for adonis
 FA_only <- FA_wide %>%
+  filter(revisedSpecies != "Benthic diatoms") %>%
   select(`8:0`:`24:1w9`) 
 
-adonis2(abs(FA_only) ~ revisedSpecies, data = FA_wide, method = 'bray', na.rm = TRUE)
+###### FA VALUES ONLY NO DIATOMS, ORDER LEVEL ANALYSIS
+# algal FA for adonis
+FA_only <- FA_wide %>%
+  filter(revisedSpecies != "Benthic diatoms") %>%
+  select(`8:0`:`24:1w9`) 
+FA_tax <- FA_wide %>%
+  filter(revisedSpecies != "Benthic diatoms") %>%
+  mutate(order = case_when(revisedSpecies == "Lambia antarctica" ~ "Bryopsidales",
+                           revisedSpecies == "Ascoseira mirabilis" ~ "Ascoseirales",
+                           revisedSpecies == "Desmarestia anceps" ~ "Desmarestiales",
+                           revisedSpecies == "Desmarestia antarctica" ~ "Desmarestiales",
+                           revisedSpecies == "Desmarestia menziesii" ~ "Desmarestiales",
+                           revisedSpecies == "Himantothallus grandifolius" ~ "Desmarestiales",
+                           revisedSpecies == "Adenocystis utricularis" ~ "Ectocarpales",
+                           revisedSpecies == "Cystosphaera jacquinotii" ~ "Fucales",
+                           revisedSpecies == "Microzonia australe" ~ "Syringodermatales",
+                           revisedSpecies == "Ballia callitricha" ~ "Balliales",
+                           revisedSpecies == "Porphyra plocamiestris" ~ "Bangiales",
+                           revisedSpecies == "Delisea pulchra" ~ "Bonnemaisoniales",
+                           revisedSpecies == "Georgiella confluens" ~ "Ceramiales",
+                           revisedSpecies == "Myriogramme smithii" ~ "Ceramiales",
+                           revisedSpecies == "Myriogramme manginii" ~ "Ceramiales",
+                           revisedSpecies == "Pantoneura plocamioides" ~ "Ceramiales",
+                           revisedSpecies == "Paraglossum salicifolium" ~ "Ceramiales",
+                           revisedSpecies == "Picconiella plumosa" ~ "Ceramiales",
+                           revisedSpecies == "Meridionella antarctica" ~ "Gigartinales",
+                           revisedSpecies == "Sarcopeltis antarctica" ~ "Gigartinales",
+                           revisedSpecies == "Iridaea cordata" ~ "Gigartinales",
+                           revisedSpecies == "Austropugetia crassa" ~ "Gigartinales",
+                           revisedSpecies == "Callophyllis atrosanguinea" ~ "Gigartinales",
+                           revisedSpecies == "Gymnogongrus antarcticus" ~ "Gigartinales",
+                           revisedSpecies == "Phyllophora antarctica" ~ "Gigartinales",
+                           revisedSpecies == "Curdiea racovitzae" ~ "Gracilariales",
+                           revisedSpecies == "Pachymenia orbicularis" ~ "Halymeniales",
+                           revisedSpecies == "Palmaria decipiens" ~ "Palmariales",
+                           revisedSpecies == "Plocamium sp." ~ "Plocamiales",
+                           revisedSpecies == "Trematocarpus antarcticus" ~ "Plocamiales",
+                           revisedSpecies == "Hymenocladiopsis sp." ~ "Rhodymeniales")) %>%
+  mutate(family = case_when(revisedSpecies == "Lambia antarctica" ~ "Bryopsidaceae",
+                            revisedSpecies == "Ascoseira mirabilis" ~ "Ascoseiraceae",
+                            revisedSpecies == "Desmarestia anceps" ~ "Desmarestiaceae",
+                            revisedSpecies == "Desmarestia antarctica" ~ "Desmarestiaceae",
+                            revisedSpecies == "Desmarestia menziesii" ~ "Desmarestiaceae",
+                            revisedSpecies == "Himantothallus grandifolius" ~ "Desmarestiaceae",
+                            revisedSpecies == "Adenocystis utricularis" ~ "Adenocystaceae",
+                            revisedSpecies == "Cystosphaera jacquinotii" ~ "Seirococcaceae",
+                            revisedSpecies == "Microzonia australe" ~ "Syringodermataceae",
+                            revisedSpecies == "Ballia callitricha" ~ "Balliaceae",
+                            revisedSpecies == "Porphyra plocamiestris" ~ "Bangiaceae",
+                            revisedSpecies == "Delisea pulchra" ~ "Bonnemaisoniaceae",
+                            revisedSpecies == "Georgiella confluens" ~ "Callithamniaceae",
+                            revisedSpecies == "Myriogramme smithii" ~ "Delesseriaceae",
+                            revisedSpecies == "Myriogramme manginii" ~ "Delesseriaceae",
+                            revisedSpecies == "Pantoneura plocamioides" ~ "Delesseriaceae",
+                            revisedSpecies == "Paraglossum salicifolium" ~ "Delesseriaceae",
+                            revisedSpecies == "Picconiella plumosa" ~ "Rhodomelaceae",
+                            revisedSpecies == "Meridionella antarctica" ~ "Cystocloniaceae",
+                            revisedSpecies == "Sarcopeltis antarctica" ~ "Gigartinaceae",
+                            revisedSpecies == "Iridaea cordata" ~ "Gigartinaceae",
+                            revisedSpecies == "Austropugetia crassa" ~ "Kallymeniaceae",
+                            revisedSpecies == "Callophyllis atrosanguinea" ~ "Kallymeniaceae",
+                            revisedSpecies == "Gymnogongrus antarcticus" ~ "Phyllophoraceae",
+                            revisedSpecies == "Phyllophora antarctica" ~ "Phyllophoraceae",
+                            revisedSpecies == "Curdiea racovitzae" ~ "Gracilariaceae",
+                            revisedSpecies == "Pachymenia orbicularis" ~ "Halymeniaceae",
+                            revisedSpecies == "Palmaria decipiens" ~ "Palmariaceae",
+                            revisedSpecies == "Plocamium sp." ~ "Plocamiaceae",
+                            revisedSpecies == "Trematocarpus antarcticus" ~ "Sarcodiaceae",
+                            revisedSpecies == "Hymenocladiopsis sp." ~ "Fryeellaceae")) 
 
-# PCA
+
+FA_matrix <- FA_only
+
+# run the nMDS
+FA_mds <- metaMDS(FA_matrix)
+# extract the 'points' from the nMDS that you will plot in ggplot2
+FA_mds_points <- FA_mds$points
+# turn those plot points into a dataframe that ggplot2 can read
+FA_mds_points <- data.frame(FA_mds_points)
+# join your plot points with your summed species observations from each habitat type
+plot_data_tax <- data.frame(FA_mds_points, FA_tax[,c(7,8,64,65)])
+plot_data_tax <- plot_data_tax %>%
+  rename("division" = "phylum")
 
 
-# run PCA
-PCA_results <-  rda(FA_wide[,c(24:62)], scale = TRUE)
-# check that axes are above the mean (per Numerical Ecology)
-ev <- PCA_results$CA$eig
-ev>mean(ev)
-# proportion explained
-barplot(ev, main="eigenvalues", col="bisque", las=2)
-abline(h=mean(ev), col="red")
-legend("topright", "Average eignenvalue", lwd=1, col=2)
-# testing different scalings (1 = good for samples/sites, 2 = good for correlations)
-biplot(PCA_results, scaling=1, main="PCA scaling 1") # scaling 1 for distances between objects
-biplot(PCA_results, main="PCA scaling 2") # correlation biplot, for seeing correlation between response variables (species) see angles. 
-autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
+# run the ggplot
+phylum_plot <- 
+  ggplot(plot_data_tax, aes(x=MDS1, y=MDS2, 
+                            color = division)) +  
+  theme_classic() + 
+  geom_point(size = 2) + 
+  scale_color_viridis(discrete = TRUE, begin = 0.2, end = 0.9, option = "G", name = "Division") 
+phylum_leg <- as_ggplot(get_legend(phylum_plot))
+
+order_plot <- 
+  ggplot(plot_data_tax, aes(x=MDS1, y=MDS2, # note pch and color are linked to *factors*
+                            color = order)) +  
+  theme_classic() + # optional, I just like this theme
+  geom_point(size = 2) + # set size of points to whatever you want
+  guides(color=guide_legend(ncol=2)) +
+  # geom_polygon(data=chulls_tax, aes(x=MDS1, y=MDS2, group=Habitat), fill=NA) + # optional 'hulls' around points
+  scale_color_viridis(discrete = TRUE, begin = 0.1, end = 0.9, option = "B", name = "Order") # my favorite color-blind and b&w friendly palette, look at the viridis package for more details 
+order_leg <- as_ggplot(get_legend(order_plot))
 
 
-# extract PCA coordinates
-uscores <- data.frame(PCA_results$CA$u)
-uscores1 <- inner_join(rownames_to_column(all_species), rownames_to_column(data.frame(uscores)), by = "rowname")
-vscores <- data.frame(PCA_results$CA$v)
-# extract explanatory percentages
-PCA_summary <- summary(PCA_results)
-PCA_import <- as.data.frame(PCA_summary[["cont"]][["importance"]])
-var_explained <- PCA_import[2, 1:2]
+family_plot <- 
+  ggplot(plot_data_tax, aes(x=MDS1, y=MDS2, # note pch and color are linked to *factors*
+                            color = family)) +  
+  theme_classic() + # optional, I just like this theme
+  geom_point(size = 2) + # set size of points to whatever you want
+  # geom_polygon(data=chulls_tax, aes(x=MDS1, y=MDS2, group=Habitat), fill=NA) + # optional 'hulls' around points
+  scale_color_viridis(discrete = TRUE, begin = 0.1, end = 0.9, option = "H", name = "Family") # my favorite color-blind and b&w friendly palette, look at the viridis package for more details 
+family_leg <- as_ggplot(get_legend(family_plot))
 
-# make final ggplot figure
-ggplot(uscores1) + 
-  scale_fill_viridis(discrete = TRUE) +
-  scale_color_viridis(discrete = TRUE) +
-  geom_text(data = vscores, aes(x = PC1, y = PC2, label = rownames(vscores)), col = 'red') +
-  geom_segment(data = vscores, aes(x = 0, y = 0, xend = PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
-               alpha = 0.75, color = 'grey30') +
-  geom_point(aes(x = PC1, y = PC2, fill = revisedSpecies, color = revisedSpecies,
-                 shape = phylum), size = 4) +
- #   geom_text(
-#      aes(x = PC1, y = PC2),
-#      label=uscores1$revisedSpecies,
-#      check_overlap=T
-#    ) +
-  theme_bw() +
-  theme(strip.text.y = element_text(angle = 0)) +
-  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
-       y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
+FigureMDS <- ggarrange(ggarrange(phylum_plot, order_plot, family_plot,
+                                 labels = c("A", "B", "C"),
+                                 ncol = 1, nrow = 3,
+                                 legend = "none"), 
+                       ggarrange(phylum_leg, order_leg, family_leg,
+                                 ncol = 1, nrow = 3, align = "v",
+                                 legend = "none"), 
+                       ncol = 2, nrow = 1, legend = "none")
+FigureMDS
+
+# 800 x 1200
+
+annotate_figure(FigureMDS, top = text_grob("2D stress = 0.11", size = 10))
 
 
 
-###### FA VALUES ONLY NO DIATOMS
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# FIGURE 5                                                                     ####
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+###### FA VALUES ONLY NO DIATOMS 
 
 
 
@@ -455,22 +365,457 @@ var_explained <- PCA_import[2, 1:2]
 
 # make final ggplot figure
 ggplot(uscores1) + 
-  scale_fill_viridis(discrete = TRUE) +
-  scale_color_viridis(discrete = TRUE) +
-  geom_text(data = vscores, aes(x = PC1, y = PC2, label = rownames(vscores)), col = 'red') +
+  scale_fill_viridis(discrete = TRUE, guide = guide_legend(title = "Species", label.theme = element_text(face = "italic"))) +
+  scale_color_viridis(discrete = TRUE, guide = guide_legend(title = "Species", label.theme = element_text(face = "italic")))  +
   geom_segment(data = vscores, aes(x = 0, y = 0, xend = PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
                alpha = 0.75, color = 'grey30') +
+  geom_text(data = vscores, aes(x = PC1, y = PC2, label = rownames(vscores)), col = 'red') +
   geom_point(aes(x = PC1, y = PC2, fill = revisedSpecies, color = revisedSpecies,
                  shape = phylum), size = 4) +
-  #   geom_text(
-  #      aes(x = PC1, y = PC2),
-  #      label=uscores1$revisedSpecies,
-  #      check_overlap=T
-  #    ) +
+  labs(shape = "Division") +
   theme_bw() +
   theme(strip.text.y = element_text(angle = 0)) +
   labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
        y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
+
+# size = 10x6
+
+
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# FIGURE 6                                                                     ####
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+###### FA VALUES ONLY NO DIATOMS REDUCED FA
+
+
+
+### PERMANOVA 
+
+# algal FA for adonis
+FA_only <- FA_wide %>%
+  filter(revisedSpecies != "Benthic diatoms") %>%
+  select(`20:5w3`:`20:4w6`, `16:0`, `18:3w3`, `18:4w3c`, `18:1w9c`) 
+
+adonis2(abs(FA_only) ~ revisedSpecies, data = filter(FA_wide, revisedSpecies != "Benthic diatoms"), method = 'bray', na.rm = TRUE)
+
+# PCA
+
+
+# run PCA
+PCA_results <-  rda(FA_only, scale = TRUE)
+# check that axes are above the mean (per Numerical Ecology)
+ev <- PCA_results$CA$eig
+ev>mean(ev)
+# proportion explained
+barplot(ev, main="eigenvalues", col="bisque", las=2)
+abline(h=mean(ev), col="red")
+legend("topright", "Average eignenvalue", lwd=1, col=2)
+# testing different scalings (1 = good for samples/sites, 2 = good for correlations)
+biplot(PCA_results, scaling=1, main="PCA scaling 1") # scaling 1 for distances between objects
+biplot(PCA_results, main="PCA scaling 2") # correlation biplot, for seeing correlation between response variables (species) see angles. 
+autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
+
+
+# extract PCA coordinates
+uscores <- data.frame(PCA_results$CA$u)
+uscores1 <- inner_join(rownames_to_column(filter(FA_wide, revisedSpecies != "Benthic diatoms")), rownames_to_column(data.frame(uscores)), by = "rowname")
+vscores <- data.frame(PCA_results$CA$v)
+# extract explanatory percentages
+PCA_summary <- summary(PCA_results)
+PCA_import <- as.data.frame(PCA_summary[["cont"]][["importance"]])
+var_explained <- PCA_import[2, 1:2]
+
+# make final ggplot figure
+ggplot(uscores1) + 
+  scale_fill_viridis(discrete = TRUE, guide = guide_legend(title = "Species", label.theme = element_text(face = "italic"))) +
+  scale_color_viridis(discrete = TRUE, guide = guide_legend(title = "Species", label.theme = element_text(face = "italic")))  +
+  geom_segment(data = vscores, aes(x = 0, y = 0, xend = PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
+               alpha = 0.75, color = 'grey30') +
+  geom_text(data = vscores, aes(x = PC1, y = PC2, label = rownames(vscores)), col = 'red', nudge_x = 0.03) +
+  geom_point(aes(x = PC1, y = PC2, fill = revisedSpecies, color = revisedSpecies,
+                 shape = phylum), size = 4) +
+  labs(shape = "Division") +
+  theme_bw() +
+  theme(strip.text.y = element_text(angle = 0)) +
+  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
+       y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
+
+# size = 10x6
+
+
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# FIGURE 7                                                                     ####
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+# cluster analysis of SI only
+
+no_diatoms_meanSI <- SI_wide %>%
+  select(revisedSpecies, phylum, `CN ratio`:`d13C`) %>%
+  filter(revisedSpecies != "Benthic diatoms") %>%
+  group_by(phylum, revisedSpecies) %>%
+  summarise(across(`CN ratio`:`d13C`, mean)) 
+
+Alg_dist <- vegdist(abs(no_diatoms_meanSI[,3:5]))
+Alg_clust <- hclust(Alg_dist, method="ward.D2")
+Alg_order <- data.frame(SI_wide$revisedSpecies, Alg_clust$order)
+Alg_order <- Alg_order[order(Alg_order$Alg_clust.order), ]
+
+plot(Alg_clust, las = 1, 
+     main="Cluster diagram of algae", 
+     xlab="Sample", 
+     ylab="Euclidean distance",
+     label = Alg_order$FA_wide.revisedSpecies)
+
+Alg_clust$labels <- no_diatoms_meanSI$revisedSpecies
+clust_col <- viridis(4, alpha = 1, begin = 0.2, end = 0.8, direction = 1, option = "C")
+
+fviz_dend(x = Alg_clust, cex = 0.8, lwd = 0.8, k = 4, 
+          k_colors = clust_col,
+          rect = TRUE, 
+          rect_border = "jco", 
+          rect_fill = TRUE,
+          type = "circular",
+          ggtheme = theme_bw())
+
+# size = 7x7
+
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# FIGURE 8                                                                     ####
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+###### SI VALUES ONLY no diatoms
+
+### PERMANOVA 
+
+# algal SI for adonis
+SI_only <- SI_wide %>%
+  filter(revisedSpecies != "Benthic diatoms") %>%
+  select(`CN ratio`:d13C) 
+
+adonis2(abs(SI_only) ~ revisedSpecies, data = filter(SI_wide, revisedSpecies != "Benthic diatoms"), method = 'bray', na.rm = TRUE)
+
+# run PCA
+PCA_results <-  rda(SI_wide[,c(21:23)], scale = TRUE)
+# check that axes are above the mean (per Numerical Ecology)
+ev <- PCA_results$CA$eig
+ev>mean(ev)
+# proportion explained
+barplot(ev, main="eigenvalues", col="bisque", las=2)
+abline(h=mean(ev), col="red")
+legend("topright", "Average eignenvalue", lwd=1, col=2)
+# testing different scalings (1 = good for samples/sites, 2 = good for correlations)
+biplot(PCA_results, scaling=1, main="PCA scaling 1") # scaling 1 for distances between objects
+biplot(PCA_results, main="PCA scaling 2") # correlation biplot, for seeing correlation between response variables (species) see angles. 
+autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
+
+
+# extract PCA coordinates
+uscores <- data.frame(PCA_results$CA$u)
+uscores1 <- inner_join(rownames_to_column(filter(SI_wide, revisedSpecies != "Benthic diatoms")), rownames_to_column(data.frame(uscores)), by = "rowname")
+vscores <- data.frame(PCA_results$CA$v)
+# extract explanatory percentages
+PCA_summary <- summary(PCA_results)
+PCA_import <- as.data.frame(PCA_summary[["cont"]][["importance"]])
+var_explained <- PCA_import[2, 1:2]
+
+# make final ggplot figure (Points scaled by 1.5)
+ggplot(uscores1) + 
+  scale_fill_viridis(discrete = TRUE, guide = guide_legend(title = "Species", label.theme = element_text(face = "italic"))) +
+  scale_color_viridis(discrete = TRUE, guide = guide_legend(title = "Species", label.theme = element_text(face = "italic")))  +
+  geom_segment(data = vscores, aes(x = 0, y = 0, xend = PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
+               alpha = 0.75, color = 'grey30') +
+  geom_text(data = vscores, aes(x = PC1, y = PC2, label = rownames(vscores)), col = 'red', nudge_y = 0.03) +
+  geom_point(aes(x = PC1*1.5, y = PC2*1.5, fill = revisedSpecies, color = revisedSpecies,
+                 shape = phylum), size = 4) +
+  labs(shape = "Division") +
+  theme_bw() +
+  theme(strip.text.y = element_text(angle = 0)) +
+  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
+       y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
+
+# size = 10x6
+
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# FIGURE 9                                                                     ####
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+##### WITHOUT DIATOMS
+
+### PERMANOVA 
+
+# algal FA for adonis
+marker_only <- overlap_species %>%
+  filter(revisedSpecies != "Benthic diatoms") %>%
+  select(`CN ratio`:`24:1w9`) 
+
+adonis2(abs(marker_only) ~ revisedSpecies, data = filter(overlap_species, revisedSpecies != "Benthic diatoms"), method = 'bray', na.rm = TRUE)
+
+# run PCA
+PCA_results <-  rda(marker_only, scale = TRUE)
+# check that axes are above the mean (per Numerical Ecology)
+ev <- PCA_results$CA$eig
+ev>mean(ev)
+# proportion explained
+barplot(ev, main="eigenvalues", col="bisque", las=2)
+abline(h=mean(ev), col="red")
+legend("topright", "Average eignenvalue", lwd=1, col=2)
+# testing different scalings (1 = good for samples/sites, 2 = good for correlations)
+biplot(PCA_results, scaling=1, main="PCA scaling 1") # scaling 1 for distances between objects
+biplot(PCA_results, main="PCA scaling 2") # correlation biplot, for seeing correlation between response variables (species) see angles. 
+autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
+
+
+# extract PCA coordinates
+uscores <- data.frame(PCA_results$CA$u)
+uscores1 <- inner_join(rownames_to_column(filter(overlap_species, revisedSpecies != "Benthic diatoms")), rownames_to_column(data.frame(uscores)), by = "rowname")
+vscores <- data.frame(PCA_results$CA$v)
+# extract explanatory percentages
+PCA_summary <- summary(PCA_results)
+PCA_import <- as.data.frame(PCA_summary[["cont"]][["importance"]])
+var_explained <- PCA_import[2, 1:2]
+
+# make final ggplot figure
+ggplot(uscores1) + 
+  scale_fill_viridis(discrete = TRUE, guide = guide_legend(title = "Species", label.theme = element_text(face = "italic"))) +
+  scale_color_viridis(discrete = TRUE, guide = guide_legend(title = "Species", label.theme = element_text(face = "italic")))  +
+  geom_segment(data = vscores, aes(x = 0, y = 0, xend = PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
+               alpha = 0.75, color = 'grey30') +
+  geom_point(aes(x = PC1, y = PC2, fill = revisedSpecies, color = revisedSpecies,
+                 shape = phylum), size = 4) +
+  geom_text(data = vscores, aes(x = PC1, y = PC2, label = rownames(vscores)), col = 'red') +
+  labs(shape = "Division") +
+  theme_bw() +
+  theme(strip.text.y = element_text(angle = 0)) +
+  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
+       y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
+
+
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# TABLE 2                                                                      ####
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+##### What are the diffs if any between published and non-published FA per phylum?
+
+
+
+# calc mean and sd of each FA for each sp
+FA_means <- all_species %>%
+  filter(revisedSpecies != "Benthic diatoms") %>%
+  mutate(published = case_when(revisedSpecies == "Lambia antarctica" ~ "published",
+                               revisedSpecies == "Ascoseira mirabilis" ~ "published",
+                               revisedSpecies == "Desmarestia anceps" ~ "published",
+                               revisedSpecies == "Desmarestia antarctica" ~ "published",
+                               revisedSpecies == "Desmarestia menziesii" ~ "published",
+                               revisedSpecies == "Himantothallus grandifolius" ~ "published",
+                               revisedSpecies == "Adenocystis utricularis" ~ "published",
+                               revisedSpecies == "Delisea pulchra" ~ "published",
+                               revisedSpecies == "Georgiella confluens" ~ "published",
+                               revisedSpecies == "Myriogramme smithii" ~ "published",
+                               revisedSpecies == "Myriogramme manginii" ~ "published",
+                               revisedSpecies == "Pantoneura plocamioides" ~ "published",
+                               revisedSpecies == "Sarcopeltis antarctica" ~ "published",
+                               revisedSpecies == "Iridaea cordata" ~ "published",
+                               revisedSpecies == "Curdiea racovitzae" ~ "published",
+                               revisedSpecies == "Palmaria decipiens" ~ "published",
+                               revisedSpecies == "Plocamium sp." ~ "published",
+                               revisedSpecies == "Hymenocladiopsis sp." ~ "published",
+                               revisedSpecies == "Cystosphaera jacquinotii" ~ "unpublished",
+                               revisedSpecies == "Microzonia australe" ~ "unpublished",
+                               revisedSpecies == "Ballia callitricha" ~ "unpublished",
+                               revisedSpecies == "Porphyra plocamiestris" ~ "unpublished",
+                               revisedSpecies == "Paraglossum salicifolium" ~ "unpublished",
+                               revisedSpecies == "Picconiella plumosa" ~ "unpublished",
+                               revisedSpecies == "Meridionella antarctica" ~ "unpublished",
+                               revisedSpecies == "Austropugetia crassa" ~ "unpublished",
+                               revisedSpecies == "Callophyllis atrosanguinea" ~ "unpublished",
+                               revisedSpecies == "Gymnogongrus antarcticus" ~ "unpublished",
+                               revisedSpecies == "Phyllophora antarctica" ~ "unpublished",
+                               revisedSpecies == "Pachymenia orbicularis" ~ "unpublished",
+                               revisedSpecies == "Trematocarpus antarcticus" ~ "unpublished")) %>%
+  mutate(across(c(`8:0`:`24:1w9`), function(x) x*100))
+FA_means_separate <- FA_means %>%
+  select(revisedSpecies, phylum, published, `8:0`:`24:1w9`) %>%
+  group_by(phylum, published) %>%
+  filter(!is.na(`8:0`)) %>%
+  summarise(across(`8:0`:`24:1w9`, list(mean = mean))) 
+top_FA_separate <- FA_means_separate %>%
+  pivot_longer(`8:0_mean`:`24:1w9_mean`, names_to = "FA", values_to = "Percent") %>%
+  arrange(desc(Percent)) %>% 
+  group_by(phylum, published) %>%
+  slice(1:5) %>%
+  mutate(rank = c(1:5)) %>%
+  pivot_wider(names_from = "rank", values_from = c("FA", "Percent"))
+
+# grand means
+
+FA_means_together <- FA_means %>%
+  select(revisedSpecies, phylum, `8:0`:`24:1w9`) %>%
+  group_by(phylum) %>%
+  filter(!is.na(`8:0`)) %>%
+  summarise(across(`8:0`:`24:1w9`, list(mean = mean))) 
+top_FA_together <- FA_means_together %>%
+  pivot_longer(`8:0_mean`:`24:1w9_mean`, names_to = "FA", values_to = "Percent") %>%
+  arrange(desc(Percent)) %>% 
+  group_by(phylum) %>%
+  slice(1:10) %>%
+  mutate(rank = c(1:10)) %>%
+  pivot_wider(names_from = "rank", values_from = c("FA", "Percent"))
+
+
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# TABLE 4                                                                      ####
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+simper_FA <- FA_wide %>%
+  filter(revisedSpecies != "Benthic diatoms") %>%
+  select(`8:0`:`24:1w9`) 
+
+full_algal_simper <- simper(simper_FA)
+simpersum <- summary(full_algal_simper)
+simpersum <- data.frame(unclass(simpersum),  # Convert summary to data frame
+                        check.names = FALSE)
+simpersum <- rownames_to_column(simpersum, "VALUE")
+
+write_csv(simpersum, "simper.csv")
+
+
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# SUPP TABLE 3                                                                 ####
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+###### BIOMARKER VALUES FOR TABLE SUPP 3
+
+# calc mean and sd of each FA for each sp
+FA_means <- all_species %>%
+  filter(revisedSpecies != "Benthic diatoms") %>%
+  mutate(across(c(`8:0`:`24:1w9`), function(x) x*100)) 
+FA_means <- FA_means %>%
+  select(revisedSpecies, phylum, `8:0`:`24:1w9`) %>%
+  group_by(phylum, revisedSpecies) %>%
+  filter(!is.na(`8:0`)) %>%
+  summarise(across(`8:0`:`24:1w9`, list(mean = mean, sd = sd))) 
+FA_means <- FA_means %>%
+  mutate(across(where(is.numeric), round, 3))
+FA_means <- as.data.frame(t(FA_means)) 
+colnames(FA_means) <- FA_means[2,]
+
+
+# calc mean and sd of each SI for each sp
+
+SI_means <- all_species %>%
+  select(revisedSpecies, phylum, `CN ratio`:`d13C`) %>%
+  filter(!is.na(`CN ratio`)) %>%
+  group_by(phylum, revisedSpecies) %>%
+  summarise(across(`CN ratio`:`d13C`, list(mean = mean, sd = sd)))
+SI_means <- as.data.frame(t(SI_means)) 
+colnames(SI_means) <- SI_means[2,]
+
+marker_means <- FA_means %>%
+  bind_rows(SI_means[3:8,]) 
+marker_means <- marker_means %>% 
+  replace(is.na(.), "-") %>%
+  rownames_to_column()
+
+means_only <- marker_means %>%
+  filter(grepl('mean', rowname))
+
+# write_csv(means_only, "means_only.csv")
+
+sd_only <- marker_means %>%
+  filter(grepl('sd', rowname))
+
+# write_csv(sd_only, "sd_only.csv")
+
+# write_csv(marker_means, "marker_means.csv")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -533,66 +878,6 @@ ggplot(uscores1) +
   labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
        y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
 
-
-
-###### FA VALUES ONLY NO DIATOMS REDUCED FA
-
-
-
-### PERMANOVA 
-
-# algal FA for adonis
-FA_only <- FA_wide %>%
-  filter(revisedSpecies != "Benthic diatoms") %>%
-  select(`20:5w3`:`20:4w6`, `18:2w6c`, `18:3w3`) 
-
-adonis2(abs(FA_only) ~ revisedSpecies, data = filter(FA_wide, revisedSpecies != "Benthic diatoms"), method = 'bray', na.rm = TRUE)
-
-# PCA
-
-
-# run PCA
-PCA_results <-  rda(FA_only, scale = TRUE)
-# check that axes are above the mean (per Numerical Ecology)
-ev <- PCA_results$CA$eig
-ev>mean(ev)
-# proportion explained
-barplot(ev, main="eigenvalues", col="bisque", las=2)
-abline(h=mean(ev), col="red")
-legend("topright", "Average eignenvalue", lwd=1, col=2)
-# testing different scalings (1 = good for samples/sites, 2 = good for correlations)
-biplot(PCA_results, scaling=1, main="PCA scaling 1") # scaling 1 for distances between objects
-biplot(PCA_results, main="PCA scaling 2") # correlation biplot, for seeing correlation between response variables (species) see angles. 
-autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
-
-
-# extract PCA coordinates
-uscores <- data.frame(PCA_results$CA$u)
-uscores1 <- inner_join(rownames_to_column(filter(FA_wide, revisedSpecies != "Benthic diatoms")), rownames_to_column(data.frame(uscores)), by = "rowname")
-vscores <- data.frame(PCA_results$CA$v)
-# extract explanatory percentages
-PCA_summary <- summary(PCA_results)
-PCA_import <- as.data.frame(PCA_summary[["cont"]][["importance"]])
-var_explained <- PCA_import[2, 1:2]
-
-# make final ggplot figure
-ggplot(uscores1) + 
-  scale_fill_viridis(discrete = TRUE) +
-  scale_color_viridis(discrete = TRUE) +
-  geom_text(data = vscores, aes(x = PC1, y = PC2, label = rownames(vscores)), col = 'red') +
-  geom_segment(data = vscores, aes(x = 0, y = 0, xend = PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
-               alpha = 0.75, color = 'grey30') +
-  geom_point(aes(x = PC1, y = PC2, fill = revisedSpecies, color = revisedSpecies,
-                 shape = phylum), size = 4) +
-  #   geom_text(
-  #      aes(x = PC1, y = PC2),
-  #      label=uscores1$revisedSpecies,
-  #      check_overlap=T
-  #    ) +
-  theme_bw() +
-  theme(strip.text.y = element_text(angle = 0)) +
-  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
-       y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
 
 
 
@@ -783,7 +1068,7 @@ ggplot(uscores1) +
 
 # algal min FA for adonis
 minFA_only <- overlap_species %>%
-  select(`16:0`, `18:2w6c`, `16:1w7c`, `17:0`) 
+  select(`16:0`, `18:2w6c`, `16:1w7c`, `18:4w3c`, `18:3w3`) 
 
 adonis2(abs(minFA_only) ~ revisedSpecies, data = overlap_species, method = 'bray', na.rm = TRUE)
 
@@ -1233,41 +1518,6 @@ ggplot(uscores1) +
        y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
 
 
-# Proportional stacked barplot of FA composition for each species
-
-# calc mean of each FA for each sp
-FA_quartile <- long_species %>%
-  filter(revisedSpecies != "Benthic diatoms") %>%
-  filter(marker %notin% c("d13C", "d15N", "CN ratio")) %>%
-  filter(value != 0)
-summary(FA_quartile$value)
-
-FA_means <- FA_wide %>%
-  select(revisedSpecies, phylum, `8:0`:`24:1w9`) %>%
-  filter(revisedSpecies != "Benthic diatoms") %>%
-  group_by(phylum, revisedSpecies) %>%
-  summarise(across(`8:0`:`24:1w9`, mean)) %>%
-  pivot_longer(cols = `8:0`:`24:1w9`, names_to = 'Fatty Acid', values_to = 'value') %>%
-  filter(value >= 0.05) %>% # 1st quartile of all FA values in dataset
-  mutate(phylum = case_when(phylum == "Chlorophyta" ~ "",
-                            phylum == "Ochrophyta" ~ "Ochrophyta",
-                            phylum == "Rhodophyta" ~ "Rhodophyta"))
-
-
-FA_means %>%
-  ggplot() +
-  geom_col(aes(x = revisedSpecies, y = value, fill = `Fatty Acid`), position = "fill") +
-  scale_fill_viridis(discrete = TRUE, option = 6) +
-  theme_bw() +
-  labs(x = "Species", y = "Mean Proportional Composition") +
-  guides(fill = guide_legend(title = "Fatty Acids")) +
-  facet_grid(cols = vars(phylum), scales = "free_x", space = "free_x") +
-  theme(axis.text.x = element_text(angle = 270, hjust = 0, vjust = 0.25)) +
-  theme(axis.title.x = element_text(vjust = -1)) +
-  theme(axis.title.y = element_text(vjust = 2.5))
-
-
-
 # MDS of community
 FA_mds <- metaMDS(FA_only)
 FA_mds_points <- FA_mds$points
@@ -1278,216 +1528,20 @@ chulls_tax <- ddply(plot_data_tax, .(Habitat), function(df) df[chull(df$MDS1, df
 detach(package:plyr)
 plot(FA_mds)
 
-simper_FA <- FA_wide %>%
-  filter(revisedSpecies != "Benthic diatoms") %>%
-  select(`8:0`:`24:1w9`) 
-
-full_algal_simper <- simper(simper_FA)
-summary(full_algal_simper)
-
-
-# cluster analysis of FA only
-
-no_diatoms_meanFA <- FA_wide %>%
-  select(revisedSpecies, phylum, `8:0`:`24:1w9`) %>%
-  filter(revisedSpecies != "Benthic diatoms") %>%
-  group_by(phylum, revisedSpecies) %>%
-  summarise(across(`8:0`:`24:1w9`, mean)) 
-
-
-Alg_dist <- vegdist(no_diatoms_meanFA[,3:41])
-Alg_clust <- hclust(Alg_dist, method="ward.D2")
-Alg_order <- data.frame(no_diatoms_meanFA$revisedSpecies, Alg_clust$order)
-Alg_order <- Alg_order[order(Alg_order$Alg_clust.order), ]
-
-plot(Alg_clust, las = 1, 
-     main="Cluster diagram of algae", 
-     xlab="Sample", 
-     ylab="Euclidean distance",
-     label = Alg_order$FA_wide.revisedSpecies)
-
-Alg_clust$labels <- no_diatoms_meanFA$revisedSpecies
-clust_col <- viridis(4, alpha = 1, begin = 0.2, end = 0.8, direction = 1, option = "C")
-
-fviz_dend(x = Alg_clust, cex = 0.8, lwd = 0.8, k = 4, 
-          k_colors = clust_col,
-          rect = TRUE, 
-          rect_border = "jco", 
-          rect_fill = TRUE,
-          type = "circular",
-          ggtheme = theme_bw())
-
-# cluster analysis of SI only
-
-no_diatoms_meanSI <- SI_wide %>%
-  select(revisedSpecies, phylum, `CN ratio`:`d13C`) %>%
-  filter(revisedSpecies != "Benthic diatoms") %>%
-  group_by(phylum, revisedSpecies) %>%
-  summarise(across(`CN ratio`:`d13C`, mean)) 
-
-Alg_dist <- vegdist(abs(no_diatoms_meanSI[,3:5]))
-Alg_clust <- hclust(Alg_dist, method="ward.D2")
-Alg_order <- data.frame(SI_wide$revisedSpecies, Alg_clust$order)
-Alg_order <- Alg_order[order(Alg_order$Alg_clust.order), ]
-
-plot(Alg_clust, las = 1, 
-     main="Cluster diagram of algae", 
-     xlab="Sample", 
-     ylab="Euclidean distance",
-     label = Alg_order$FA_wide.revisedSpecies)
-
-Alg_clust$labels <- no_diatoms_meanSI$revisedSpecies
-clust_col <- viridis(4, alpha = 1, begin = 0.2, end = 0.8, direction = 1, option = "C")
-
-fviz_dend(x = Alg_clust, cex = 0.8, lwd = 0.8, k = 4, 
-          k_colors = clust_col,
-          rect = TRUE, 
-          rect_border = "jco", 
-          rect_fill = TRUE,
-          type = "circular",
-          ggtheme = theme_bw())
-
-
-
-##### What are the diffs if any between published and non-published FA per phylum?
-
-
-  
-  # calc mean and sd of each FA for each sp
-  FA_means <- all_species %>%
-  filter(revisedSpecies != "Benthic diatoms") %>%
-    mutate(published = case_when(revisedSpecies == "Lambia antarctica" ~ "published",
-                                 revisedSpecies == "Ascoseira mirabilis" ~ "published",
-                                 revisedSpecies == "Desmarestia anceps" ~ "published",
-                                 revisedSpecies == "Desmarestia antarctica" ~ "published",
-                                 revisedSpecies == "Desmarestia menziesii" ~ "published",
-                                 revisedSpecies == "Himantothallus grandifolius" ~ "published",
-                                 revisedSpecies == "Adenocystis utricularis" ~ "published",
-                                 revisedSpecies == "Delisea pulchra" ~ "published",
-                                 revisedSpecies == "Georgiella confluens" ~ "published",
-                                 revisedSpecies == "Myriogramme smithii" ~ "published",
-                                 revisedSpecies == "Myriogramme manginii" ~ "published",
-                                 revisedSpecies == "Pantoneura plocamioides" ~ "published",
-                                 revisedSpecies == "Sarcopeltis antarctica" ~ "published",
-                                 revisedSpecies == "Iridaea cordata" ~ "published",
-                                 revisedSpecies == "Curdiea racovitzae" ~ "published",
-                                 revisedSpecies == "Palmaria decipiens" ~ "published",
-                                 revisedSpecies == "Plocamium sp." ~ "published",
-                                 revisedSpecies == "Hymenocladiopsis sp." ~ "published",
-                                 revisedSpecies == "Cystosphaera jacquinotii" ~ "unpublished",
-                                 revisedSpecies == "Microzonia australe" ~ "unpublished",
-                                 revisedSpecies == "Ballia callitricha" ~ "unpublished",
-                                 revisedSpecies == "Porphyra plocamiestris" ~ "unpublished",
-                                 revisedSpecies == "Paraglossum salicifolium" ~ "unpublished",
-                                 revisedSpecies == "Picconiella plumosa" ~ "unpublished",
-                                 revisedSpecies == "Meridionella antarctica" ~ "unpublished",
-                                 revisedSpecies == "Austropugetia crassa" ~ "unpublished",
-                                 revisedSpecies == "Callophyllis atrosanguinea" ~ "unpublished",
-                                 revisedSpecies == "Gymnogongrus antarcticus" ~ "unpublished",
-                                 revisedSpecies == "Phyllophora antarctica" ~ "unpublished",
-                                 revisedSpecies == "Pachymenia orbicularis" ~ "unpublished",
-                                 revisedSpecies == "Trematocarpus antarcticus" ~ "unpublished")) %>%
-  mutate(across(c(`8:0`:`24:1w9`), function(x) x*100))
-FA_means <- FA_means %>%
-  select(revisedSpecies, phylum, published, `8:0`:`24:1w9`) %>%
-  group_by(phylum, published) %>%
-  filter(!is.na(`8:0`)) %>%
-  summarise(across(`8:0`:`24:1w9`, list(mean = mean))) 
-top_FA <- FA_means %>%
-  pivot_longer(`8:0_mean`:`24:1w9_mean`, names_to = "FA", values_to = "Percent") %>%
-  arrange(desc(Percent)) %>% 
-  group_by(phylum, published) %>%
-  slice(1:5) %>%
-  mutate(rank = c(1:5)) %>%
-  pivot_wider(names_from = "rank", values_from = c("FA", "Percent"))
-
-# grand means
-
-FA_means <- FA_means %>%
-  select(revisedSpecies, phylum, `8:0`:`24:1w9`) %>%
-  group_by(phylum) %>%
-  filter(!is.na(`8:0`)) %>%
-  summarise(across(`8:0`:`24:1w9`, list(mean = mean))) 
-top_FA <- FA_means %>%
-  pivot_longer(`8:0_mean`:`24:1w9_mean`, names_to = "FA", values_to = "Percent") %>%
-  arrange(desc(Percent)) %>% 
-  group_by(phylum) %>%
-  slice(1:10) %>%
-  mutate(rank = c(1:10)) %>%
-  pivot_wider(names_from = "rank", values_from = c("FA", "Percent"))
 
 
 
 
-###### FA VALUES ONLY NO DIATOMS, ORDER LEVEL ANALYSIS
-# algal FA for adonis
-FA_only <- FA_wide %>%
-  filter(revisedSpecies != "Benthic diatoms") %>%
-  select(`8:0`:`24:1w9`) 
-FA_tax <- FA_wide %>%
-  filter(revisedSpecies != "Benthic diatoms") %>%
-  mutate(order = case_when(revisedSpecies == "Lambia antarctica" ~ "Bryopsidales",
-                           revisedSpecies == "Ascoseira mirabilis" ~ "Ascoseirales",
-                           revisedSpecies == "Desmarestia anceps" ~ "Desmarestiales",
-                           revisedSpecies == "Desmarestia antarctica" ~ "Desmarestiales",
-                           revisedSpecies == "Desmarestia menziesii" ~ "Desmarestiales",
-                           revisedSpecies == "Himantothallus grandifolius" ~ "Desmarestiales",
-                           revisedSpecies == "Adenocystis utricularis" ~ "Ectocarpales",
-                           revisedSpecies == "Cystosphaera jacquinotii" ~ "Fucales",
-                           revisedSpecies == "Microzonia australe" ~ "Syringodermatales",
-                           revisedSpecies == "Ballia callitricha" ~ "Balliales",
-                           revisedSpecies == "Porphyra plocamiestris" ~ "Bangiales",
-                           revisedSpecies == "Delisea pulchra" ~ "Bonnemaisoniales",
-                           revisedSpecies == "Georgiella confluens" ~ "Ceramiales",
-                           revisedSpecies == "Myriogramme smithii" ~ "Ceramiales",
-                           revisedSpecies == "Myriogramme manginii" ~ "Ceramiales",
-                           revisedSpecies == "Pantoneura plocamioides" ~ "Ceramiales",
-                           revisedSpecies == "Paraglossum salicifolium" ~ "Ceramiales",
-                           revisedSpecies == "Picconiella plumosa" ~ "Ceramiales",
-                           revisedSpecies == "Meridionella antarctica" ~ "Gigartinales",
-                           revisedSpecies == "Sarcopeltis antarctica" ~ "Gigartinales",
-                           revisedSpecies == "Iridaea cordata" ~ "Gigartinales",
-                           revisedSpecies == "Austropugetia crassa" ~ "Gigartinales",
-                           revisedSpecies == "Callophyllis atrosanguinea" ~ "Gigartinales",
-                           revisedSpecies == "Gymnogongrus antarcticus" ~ "Gigartinales",
-                           revisedSpecies == "Phyllophora antarctica" ~ "Gigartinales",
-                           revisedSpecies == "Curdiea racovitzae" ~ "Gracilariales",
-                           revisedSpecies == "Pachymenia orbicularis" ~ "Halymeniales",
-                           revisedSpecies == "Palmaria decipiens" ~ "Palmariales",
-                           revisedSpecies == "Plocamium sp." ~ "Plocamiales",
-                           revisedSpecies == "Trematocarpus antarcticus" ~ "Plocamiales",
-                           revisedSpecies == "Hymenocladiopsis sp." ~ "Rhodymeniales")) %>%
-  mutate(family = case_when(revisedSpecies == "Lambia antarctica" ~ "Bryopsidaceae",
-                           revisedSpecies == "Ascoseira mirabilis" ~ "Ascoseiraceae",
-                           revisedSpecies == "Desmarestia anceps" ~ "Desmarestiaceae",
-                           revisedSpecies == "Desmarestia antarctica" ~ "Desmarestiaceae",
-                           revisedSpecies == "Desmarestia menziesii" ~ "Desmarestiaceae",
-                           revisedSpecies == "Himantothallus grandifolius" ~ "Desmarestiaceae",
-                           revisedSpecies == "Adenocystis utricularis" ~ "Adenocystaceae",
-                           revisedSpecies == "Cystosphaera jacquinotii" ~ "Seirococcaceae",
-                           revisedSpecies == "Microzonia australe" ~ "Syringodermataceae",
-                           revisedSpecies == "Ballia callitricha" ~ "Balliaceae",
-                           revisedSpecies == "Porphyra plocamiestris" ~ "Bangiaceae",
-                           revisedSpecies == "Delisea pulchra" ~ "Bonnemaisoniaceae",
-                           revisedSpecies == "Georgiella confluens" ~ "Callithamniaceae",
-                           revisedSpecies == "Myriogramme smithii" ~ "Delesseriaceae",
-                           revisedSpecies == "Myriogramme manginii" ~ "Delesseriaceae",
-                           revisedSpecies == "Pantoneura plocamioides" ~ "Delesseriaceae",
-                           revisedSpecies == "Paraglossum salicifolium" ~ "Delesseriaceae",
-                           revisedSpecies == "Picconiella plumosa" ~ "Rhodomelaceae",
-                           revisedSpecies == "Meridionella antarctica" ~ "Cystocloniaceae",
-                           revisedSpecies == "Sarcopeltis antarctica" ~ "Gigartinaceae",
-                           revisedSpecies == "Iridaea cordata" ~ "Gigartinaceae",
-                           revisedSpecies == "Austropugetia crassa" ~ "Kallymeniaceae",
-                           revisedSpecies == "Callophyllis atrosanguinea" ~ "Kallymeniaceae",
-                           revisedSpecies == "Gymnogongrus antarcticus" ~ "Phyllophoraceae",
-                           revisedSpecies == "Phyllophora antarctica" ~ "Phyllophoraceae",
-                           revisedSpecies == "Curdiea racovitzae" ~ "Gracilariaceae",
-                           revisedSpecies == "Pachymenia orbicularis" ~ "Halymeniaceae",
-                           revisedSpecies == "Palmaria decipiens" ~ "Palmariaceae",
-                           revisedSpecies == "Plocamium sp." ~ "Plocamiaceae",
-                           revisedSpecies == "Trematocarpus antarcticus" ~ "Sarcodiaceae",
-                           revisedSpecies == "Hymenocladiopsis sp." ~ "Fryeellaceae")) 
+
+
+
+
+
+
+
+
+
+
   
 
 ### PERMANOVA 
@@ -1546,72 +1600,6 @@ ggplot(uscores1) +
 
 
 
-
-######## nMDS
-
-FA_matrix <- FA_only
-
-# run the nMDS
-FA_mds <- metaMDS(FA_matrix)
-# extract the 'points' from the nMDS that you will plot in ggplot2
-FA_mds_points <- FA_mds$points
-# turn those plot points into a dataframe that ggplot2 can read
-FA_mds_points <- data.frame(FA_mds_points)
-# join your plot points with your summed species observations from each habitat type
-plot_data_tax <- data.frame(FA_mds_points, FA_tax[,c(7,8,63,64)])
-plot_data_tax <- plot_data_tax %>%
-  rename("division" = "phylum")
-# IF you want to add hulls around your points (totally optional), use this code
-# first you have to load plyr (DO NOT LOAD PRIOR TO THIS. It tends to mess with tidyverse functions)
-library(plyr)
-# create the list of points that will connect the 'hulls' together from your nMDS point data
-chulls_tax <- ddply(plot_data_tax, .(Habitat), function(df) df[chull(df$MDS1, df$MDS2), ])
-# DETACH PLYR so it won't mess with anything!
-detach(package:plyr)
-
-# run the ggplot
-phylum_plot <- 
-  ggplot(plot_data_tax, aes(x=MDS1, y=MDS2, # note pch and color are linked to *factors*
-                          color = division)) +  
-  theme_classic() + # optional, I just like this theme
-  geom_point(size = 2) + # set size of points to whatever you want
- # geom_polygon(data=chulls_tax, aes(x=MDS1, y=MDS2, group=Habitat), fill=NA) + # optional 'hulls' around points
-  scale_color_viridis(discrete = TRUE, begin = 0.2, end = 0.9, option = "G") # my favorite color-blind and b&w friendly palette, look at the viridis package for more details 
-phylum_leg <- as_ggplot(get_legend(phylum_plot))
-
-order_plot <- 
-  ggplot(plot_data_tax, aes(x=MDS1, y=MDS2, # note pch and color are linked to *factors*
-                                         color = order)) +  
-  theme_classic() + # optional, I just like this theme
-  geom_point(size = 2) + # set size of points to whatever you want
-    guides(color=guide_legend(ncol=2)) +
-  # geom_polygon(data=chulls_tax, aes(x=MDS1, y=MDS2, group=Habitat), fill=NA) + # optional 'hulls' around points
-  scale_color_viridis(discrete = TRUE, begin = 0.1, end = 0.9, option = "B") # my favorite color-blind and b&w friendly palette, look at the viridis package for more details 
-order_leg <- as_ggplot(get_legend(order_plot))
-
-
-family_plot <- 
-  ggplot(plot_data_tax, aes(x=MDS1, y=MDS2, # note pch and color are linked to *factors*
-                                         color = family)) +  
-  theme_classic() + # optional, I just like this theme
-  geom_point(size = 2) + # set size of points to whatever you want
-  # geom_polygon(data=chulls_tax, aes(x=MDS1, y=MDS2, group=Habitat), fill=NA) + # optional 'hulls' around points
-  scale_color_viridis(discrete = TRUE, begin = 0.1, end = 0.9, option = "H") # my favorite color-blind and b&w friendly palette, look at the viridis package for more details 
-family_leg <- as_ggplot(get_legend(family_plot))
-
-FigureMDS <- ggarrange(ggarrange(phylum_plot, order_plot, family_plot,
-                     labels = c("A", "B", "C"),
-                     ncol = 1, nrow = 3,
-                     legend = "none"), 
-                     ggarrange(phylum_leg, order_leg, family_leg,
-                               ncol = 1, nrow = 3, align = "v",
-                               legend = "none"), 
-                     ncol = 2, nrow = 1, legend = "none")
-FigureMDS
-
-# 800 x 1200
-
-annotate_figure(FigureMDS, top = text_grob("2D stress = 0.12", size = 10))
 
 # best size: ~630x700
 
