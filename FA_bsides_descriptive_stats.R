@@ -302,7 +302,7 @@ phylum_plot <-
                             color = division)) +  
   theme_classic() + 
   geom_point(size = 2) + 
-  scale_color_viridis(discrete = TRUE, begin = 0.2, end = 0.9, option = "G", name = "Division") 
+  scale_color_viridis(discrete = TRUE, begin = 0.2, end = 0.9, option = "G", name = "division") 
 phylum_leg <- as_ggplot(get_legend(phylum_plot))
 
 order_plot <- 
@@ -312,7 +312,7 @@ order_plot <-
   geom_point(size = 2) + # set size of points to whatever you want
   guides(color=guide_legend(ncol=2)) +
   # geom_polygon(data=chulls_tax, aes(x=MDS1, y=MDS2, group=Habitat), fill=NA) + # optional 'hulls' around points
-  scale_color_viridis(discrete = TRUE, begin = 0.1, end = 0.9, option = "B", name = "Order") # my favorite color-blind and b&w friendly palette, look at the viridis package for more details 
+  scale_color_viridis(discrete = TRUE, begin = 0.1, end = 0.9, option = "B", name = "order") # my favorite color-blind and b&w friendly palette, look at the viridis package for more details 
 order_leg <- as_ggplot(get_legend(order_plot))
 
 
@@ -322,7 +322,7 @@ family_plot <-
   theme_classic() + # optional, I just like this theme
   geom_point(size = 2) + # set size of points to whatever you want
   # geom_polygon(data=chulls_tax, aes(x=MDS1, y=MDS2, group=Habitat), fill=NA) + # optional 'hulls' around points
-  scale_color_viridis(discrete = TRUE, begin = 0.1, end = 0.9, option = "H", name = "Family") # my favorite color-blind and b&w friendly palette, look at the viridis package for more details 
+  scale_color_viridis(discrete = TRUE, begin = 0.1, end = 0.9, option = "H", name = "family") # my favorite color-blind and b&w friendly palette, look at the viridis package for more details 
 family_leg <- as_ggplot(get_legend(family_plot))
 
 FigureMDS <- ggarrange(ggarrange(phylum_plot, order_plot, family_plot,
@@ -455,15 +455,17 @@ PCA_import <- as.data.frame(PCA_summary[["cont"]][["importance"]])
 var_explained <- PCA_import[2, 1:2]
 
 # make final ggplot figure
+xvalues <- c(0.4, -0.10, 0.47, -0.35, -0.50, -0.40, 0.25)
+yvalues <- c(0.38, -0.75, -0.25, 0.33, 0.09, 0.14, 0.45)
 ggplot(uscores1) + 
-  scale_fill_viridis(discrete = TRUE, guide = guide_legend(title = "Species", label.theme = element_text(face = "italic"))) +
-  scale_color_viridis(discrete = TRUE, guide = guide_legend(title = "Species", label.theme = element_text(face = "italic")))  +
+  scale_fill_viridis(discrete = TRUE, guide = guide_legend(title = "species", label.theme = element_text(face = "italic"))) +
+  scale_color_viridis(discrete = TRUE, guide = guide_legend(title = "species", label.theme = element_text(face = "italic")))  +
   geom_segment(data = vscores, aes(x = 0, y = 0, xend = PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
                alpha = 0.75, color = 'grey30') +
-  geom_text(data = vscores, aes(x = PC1, y = PC2, label = rownames(vscores)), col = 'red', nudge_x = 0.03) +
+  geom_text(data = vscores, aes(x = xvalues, y = yvalues, label = rownames(vscores)), col = 'red') +
   geom_point(aes(x = PC1, y = PC2, fill = revisedSpecies, color = revisedSpecies,
                  shape = phylum), size = 4) +
-  labs(shape = "Division") +
+  labs(shape = "division") +
   theme_bw() +
   theme(strip.text.y = element_text(angle = 0)) +
   labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
@@ -574,7 +576,7 @@ deltaspecies <- ggplot(sumspecies) +
   geom_point(aes(x = mC, y = mN, color = revisedSpecies),
              size = 4) +
   scale_color_viridis(discrete = TRUE, 
-                      guide = guide_legend(title = "Species",
+                      guide = guide_legend(title = "species",
                                            label.theme = element_text(face = "italic", size = 9)))  +
   labs(x = "\U03B4\U00B9\u00B3C" , y = "\U03B4\U00B9\U2075N") +
   theme_bw()
@@ -582,13 +584,13 @@ species_leg <- ggplot(sumspecies, aes(x = mC, y = mN, color = revisedSpecies)) +
   geom_point(size = 4) +
   theme_bw() +
   scale_color_viridis(discrete = TRUE, 
-                      guide = guide_legend(title = "Species",
+                      guide = guide_legend(title = "species",
                                            label.theme = element_text(face = "italic", size = 9), ncol = 4))
 species_leg <- as_ggplot(get_legend(species_leg)) 
 
 # deltas divisions
 deltadivision <- ggplot(sumspecies) +
-  scale_color_viridis(discrete = TRUE, begin = 0.2, end = 0.9, option = "G", name = "Division") +
+  scale_color_viridis(discrete = TRUE, begin = 0.2, end = 0.9, option = "G", name = "division") +
   geom_errorbar(data = sumspecies, 
                 mapping = aes(x = mC, y = mN,
                               ymin = mN - sdN/sqrt(count), 
@@ -623,7 +625,7 @@ ratios <- SI_values %>%
   facet_grid(cols = vars(phylum), scales = "free_x", space = "free_x") +
   theme_bw() +
   theme(legend.position = "none") +
-  labs(x = "Species", y = "C:N ratio") +
+  labs(x = "species", y = "C:N ratio") +
   theme(axis.text.x = element_text(angle = 270, hjust = 0, vjust = 0.25, face = "italic")) +
   theme(axis.title.x = element_text(vjust = -1)) +
   theme(axis.title.y = element_text(vjust = 2.5))
@@ -700,7 +702,7 @@ fviz_dend(x = Alg_clust, cex = 0.8, lwd = 0.8, k = 4,
 # size = 7x7
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# FIGURE 9                                                                     ####
+# FIGURE 8                                                                     ####
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 ###### SI VALUES ONLY no diatoms
@@ -743,13 +745,15 @@ PCA_summary <- summary(PCA_results)
 PCA_import <- as.data.frame(PCA_summary[["cont"]][["importance"]])
 var_explained <- PCA_import[2, 1:2]
 
+xvalues <- c(0.63, 0.35, 0.77)
+yvalues <- c(-0.55, 0.90, 0.03)
 # make final ggplot figure (Points scaled by 1.5)
 ggplot(uscores1) + 
   scale_fill_viridis(discrete = TRUE, guide = guide_legend(title = "Species", label.theme = element_text(face = "italic"))) +
   scale_color_viridis(discrete = TRUE, guide = guide_legend(title = "Species", label.theme = element_text(face = "italic")))  +
   geom_segment(data = vscores, aes(x = 0, y = 0, xend = PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
                alpha = 0.75, color = 'grey30') +
-  geom_text(data = vscores, aes(x = PC1, y = PC2, label = rownames(vscores)), col = 'red', nudge_y = 0.03) +
+  geom_text(data = vscores, aes(x = xvalues, y = yvalues, label = rownames(vscores)), col = 'red') +
   geom_point(aes(x = PC1*1.5, y = PC2*1.5, fill = revisedSpecies, color = revisedSpecies,
                  shape = phylum), size = 4) +
   labs(shape = "Division") +
@@ -1171,7 +1175,7 @@ phylum_plot <-
                             color = division)) +  
   theme_classic() + 
   geom_point(size = 2) + 
-  scale_color_viridis(discrete = TRUE, begin = 0.2, end = 0.9, option = "G", name = "Division") 
+  scale_color_viridis(discrete = TRUE, begin = 0.2, end = 0.9, option = "G", name = "division") 
 phylum_leg <- as_ggplot(get_legend(phylum_plot))
 
 order_plot <- 
@@ -1181,7 +1185,7 @@ order_plot <-
   geom_point(size = 2) + # set size of points to whatever you want
   guides(color=guide_legend(ncol=2)) +
   # geom_polygon(data=chulls_tax, aes(x=MDS1, y=MDS2, group=Habitat), fill=NA) + # optional 'hulls' around points
-  scale_color_viridis(discrete = TRUE, begin = 0.1, end = 0.9, option = "B", name = "Order") # my favorite color-blind and b&w friendly palette, look at the viridis package for more details 
+  scale_color_viridis(discrete = TRUE, begin = 0.1, end = 0.9, option = "B", name = "order") # my favorite color-blind and b&w friendly palette, look at the viridis package for more details 
 order_leg <- as_ggplot(get_legend(order_plot))
 
 
@@ -1191,7 +1195,7 @@ family_plot <-
   theme_classic() + # optional, I just like this theme
   geom_point(size = 2) + # set size of points to whatever you want
   guides(color=guide_legend(ncol=2)) +
-  scale_color_viridis(discrete = TRUE, begin = 0.1, end = 0.9, option = "H", name = "Family") # my favorite color-blind and b&w friendly palette, look at the viridis package for more details 
+  scale_color_viridis(discrete = TRUE, begin = 0.1, end = 0.9, option = "H", name = "family") # my favorite color-blind and b&w friendly palette, look at the viridis package for more details 
 family_leg <- as_ggplot(get_legend(family_plot))
 
 FigureMDS <- ggarrange(ggarrange(phylum_plot, order_plot, family_plot,
@@ -1326,20 +1330,24 @@ PCA_summary <- summary(PCA_results)
 PCA_import <- as.data.frame(PCA_summary[["cont"]][["importance"]])
 var_explained <- PCA_import[2, 1:2]
 
+xvalues <- c(0.40, 0.08, 0.25, -0.35, 0.12, -0.39, 0.26, 0.46, 0.46, -0.25)
+yvalues <- c(0.2, -0.02, -0.24, 0.24, -0.7, -0.23, 0.41, 0.15, 0.05, 0.49)
 # make final ggplot figure
 ggplot(uscores1) + 
-  scale_fill_viridis(discrete = TRUE, guide = guide_legend(title = "Species", label.theme = element_text(face = "italic"))) +
-  scale_color_viridis(discrete = TRUE, guide = guide_legend(title = "Species", label.theme = element_text(face = "italic")))  +
+  scale_fill_viridis(discrete = TRUE, guide = guide_legend(title = "species", label.theme = element_text(face = "italic"))) +
+  scale_color_viridis(discrete = TRUE, guide = guide_legend(title = "species", label.theme = element_text(face = "italic")))  +
   geom_segment(data = vscores, aes(x = 0, y = 0, xend = PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
                alpha = 0.75, color = 'grey30') +
   geom_point(aes(x = PC1, y = PC2, fill = revisedSpecies, color = revisedSpecies,
                  shape = phylum), size = 4) +
-  geom_text(data = vscores, aes(x = PC1, y = PC2, label = rownames(vscores)), col = 'red') +
-  labs(shape = "Division") +
+  geom_text(data = vscores, aes(x = xvalues, y = yvalues, label = rownames(vscores)), col = 'red') +
+  labs(shape = "division") +
   theme_bw() +
   theme(strip.text.y = element_text(angle = 0)) +
   labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
-       y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
+       y=paste0("PC2: ",round(var_explained[2]*100,1),"%")) +
+  xlim(-0.40, 0.5)
+
 
 # size = 10x6
 
