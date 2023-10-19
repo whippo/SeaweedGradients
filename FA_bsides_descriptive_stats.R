@@ -1356,6 +1356,70 @@ ggplot(uscores1) +
 
 # SCRATCH PAD ####
 
+# number of FA detected (mean) for each species
+numberFA <- FASI_QAQC %>%
+  select(revisedSpecies, `8:0`:`24:1w9`) %>%
+  mutate(count=rowSums(.!=0)) %>%
+  group_by(revisedSpecies) %>%
+  reframe(min(count), max(count), mean(count))
+
+# reviewer 2 16PUFA comment response: 
+
+# Graeve: 18 FA ID
+# 
+# Georgiella confluens: 14.1%  16PUFA
+# Neuroglossum ligulatum: 0.6%  16PUFA
+# Pantoneura plocamioides: 13.1%  16PUFA
+# Gynogongrus turquetii: 0.1%  16PUFA
+# Gigartina skottsbergii: 1.4%  16PUFA
+# Rhodymenia subantarctica: 2.5%  16PUFA
+# Hymenocladiopsis crustigena: 2.5%  16PUFA
+# 
+# Desmarestia antarctica: 0.1%  16PUFA
+# 
+# Pereira: 25 FA ID
+# 
+# No ANT algae used 
+# 
+# Dictyota dichotoma: 0.44%  16PUFA
+# 
+# #########################
+# 
+# We detected from 21-36 across all samples with a mean ranging from 22-31 per species
+
+# pull out P. plocameoides as example
+pplo_us <- FASI_QAQC %>%
+  filter(revisedSpecies == "Pantoneura plocamioides" & Transect == "T1") %>%
+  select(revisedSpecies, `8:0`:`24:1w9`) %>%
+  pivot_longer(`8:0`:`24:1w9`, names_to = "FA")
+
+
+gcon_us <- FASI_QAQC %>%
+  filter(revisedSpecies == "Georgiella confluens") %>%
+  select(revisedSpecies, `8:0`:`24:1w9`) %>%
+  pivot_longer(`8:0`:`24:1w9`, names_to = "FA") %>%
+  group_by(FA) %>%
+  summarise(mean(value, na.rm = TRUE))
+
+# What species were collected at what sites?
+collectionsites <- FASI_QAQC %>%
+  filter(!is.na(siteName)) %>%
+  select(revisedSpecies, siteName, `Latitude (dec)`) %>%
+  replace_na(list(`Latitude (dec)` = 0)) %>%
+  pivot_wider(id_cols = revisedSpecies, names_from = siteName ,values_from = `Latitude (dec)`, values_fn = max) %>%
+  relocate("revisedSpecies", "A", "B", "C", "D", "E", "F", "G", "I", "J", "L", "M", "XX")
+
+
+
+
+
+
+
+
+
+
+
+
 # SI means per division and species grouping (for mean ranges)
 simeans <- SI_values %>%
   group_by(phylum, revisedSpecies) %>%

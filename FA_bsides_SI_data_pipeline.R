@@ -83,6 +83,12 @@ SI_step2 <- SI_step1 %>%
   mutate(ProjID = coalesce(ProjID, `SI-ID`)) %>%
   drop_na(ProjID) %>%
   filter(!row_number() %in% c(127:131))
+# fix incorrect site and GPS for sample 154 (incorrectly listed as site "I", 
+# actual site is "M" crossreferenced by date
+SI_step2[47,38] <- -68.17577
+SI_step2[47,39] <- -67.26823
+  
+
   
   
 
@@ -175,6 +181,11 @@ write_csv(gradients2019_bsides_FASI_QAQC, "Data/Biomarkers/FattyAcids/gradients2
 # SCRATCH PAD ####
 
 
+
+# find errors with GPS corrdinate site identification
+incorrect <- full_step2$LAT_DD - full_step2$`Latitude (dec)`
+
+incorrect
 
 
 # fix species typo and uncertain ID
