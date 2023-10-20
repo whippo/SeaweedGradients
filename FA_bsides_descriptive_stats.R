@@ -1409,10 +1409,49 @@ collectionsites <- FASI_QAQC %>%
   pivot_wider(id_cols = revisedSpecies, names_from = siteName ,values_from = `Latitude (dec)`, values_fn = max) %>%
   relocate("revisedSpecies", "A", "B", "C", "D", "E", "F", "G", "I", "J", "L", "M", "XX")
 
+################# New Figure 5
+
+# PCA
 
 
+# run PCA
+PCA_results <-  rda(FA_only, scale = TRUE)
 
 
+# extract PCA coordinates
+uscores <- data.frame(PCA_results$CA$u)
+uscores1 <- inner_join(rownames_to_column(filter(FA_wide, revisedSpecies != "Benthic diatoms")), rownames_to_column(data.frame(uscores)), by = "rowname")
+vscores <- data.frame(PCA_results$CA$v)
+vscores <- rownames_to_column(vscores)
+vscores <- vscores 
+
+# extract explanatory percentages
+PCA_summary <- summary(PCA_results)
+PCA_import <- as.data.frame(PCA_summary[["cont"]][["importance"]])
+
+xvalues <- c(-0.36, 0.25, -0.09, 0.29, -0.04, -0.18)
+yvalues <- c(0, -0.2, 0.25, 0.09, -0.35, 0.35)
+# make final ggplot figure
+ggplot(uscores1) + 
+  scale_fill_viridis(discrete = TRUE, begin = 0.2, end = 0.9, option = "G", guide = guide_legend(title = "division", label.theme = element_text(face = "italic"))) +
+  scale_color_viridis(discrete = TRUE, begin = 0.2, end = 0.9, option = "G", guide = guide_legend(title = "division", label.theme = element_text(face = "italic")))  +
+  geom_segment(data = vscores, aes(x = 0, y = 0, xend = PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
+               alpha = 0.75, color = 'grey30') +
+  geom_point(aes(x = PC1, y = PC2, fill = phylum, color = phylum), size = 4) +
+  geom_text(data = subset(vscores, rowname %in% c("16:0", 
+                                                  "20:4w6",
+                                                  "18:4w3",
+                                                  "18:1w9c",
+                                                  "18:3w3",
+                                                  "18:1w7c",
+                                                  "20:5w3")), aes(x = xvalues, y = yvalues, label = rowname), col = 'red') +
+  theme_bw() +
+  theme(strip.text.y = element_text(angle = 0)) +
+  labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
+       y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
+
+# size = 10x6
+data=subset(mtcars, wt > 4 | mpg > 25)
 
 
 
