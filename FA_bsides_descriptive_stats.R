@@ -1367,11 +1367,11 @@ numberFA <- FASI_QAQC %>%
 
 # Graeve: 18 FA ID
 # 
-# Georgiella confluens: 14.1%  16PUFA
+# Georgiella confluens: 14.1%  16PUFA # my GECO likely has trace 16:3 & 16:4
 # Neuroglossum ligulatum: 0.6%  16PUFA
-# Pantoneura plocamioides: 13.1%  16PUFA
+# Pantoneura plocamioides: 13.1%  16PUFA # my PAPL likely has trace 16:3 & 16:4
 # Gynogongrus turquetii: 0.1%  16PUFA
-# Gigartina skottsbergii: 1.4%  16PUFA
+# Gigartina skottsbergii: 1.4%  16PUFA 
 # Rhodymenia subantarctica: 2.5%  16PUFA
 # Hymenocladiopsis crustigena: 2.5%  16PUFA
 # 
