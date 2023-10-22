@@ -308,7 +308,7 @@ phylum_leg <- as_ggplot(get_legend(phylum_plot))
 order_plot <- 
   ggplot(plot_data_tax, aes(x=MDS1, y=MDS2, # note pch and color are linked to *factors*
                             color = order)) +  
-  theme_classic() + # optional, I just like this theme
+  theme_classic() +
   geom_point(size = 2) + # set size of points to whatever you want
   guides(color=guide_legend(ncol=2)) +
   # geom_polygon(data=chulls_tax, aes(x=MDS1, y=MDS2, group=Habitat), fill=NA) + # optional 'hulls' around points
@@ -319,7 +319,7 @@ order_leg <- as_ggplot(get_legend(order_plot))
 family_plot <- 
   ggplot(plot_data_tax, aes(x=MDS1, y=MDS2, # note pch and color are linked to *factors*
                             color = family)) +  
-  theme_classic() + # optional, I just like this theme
+  theme_classic() + 
   geom_point(size = 2) + # set size of points to whatever you want
   # geom_polygon(data=chulls_tax, aes(x=MDS1, y=MDS2, group=Habitat), fill=NA) + # optional 'hulls' around points
   scale_color_viridis(discrete = TRUE, begin = 0.1, end = 0.9, option = "H", name = "family") # my favorite color-blind and b&w friendly palette, look at the viridis package for more details 
