@@ -4,7 +4,7 @@
 # Script Created 2023-03-21                                                      ##
 # Data source: Antarctic Gradients 2019                                          ##
 # R code prepared by Ross Whippo                                                 ##
-# Last updated 2023-04-01                                                        ##
+# Last updated 2023-10-23                                                        ##
 #                                                                                ##
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -23,11 +23,7 @@
 # FA_bsides_SI_data_pipeline.R
 
 # TO DO 
-# 2. Run PERMANOVA and PCA for SI and FA separately
-#     - samples in common
-#     - FA with additional samples
-#     - 'All' samples
-# 3. Fill in all values in paper table for FA and SI
+
 
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1355,6 +1351,128 @@ ggplot(uscores1) +
 #<<<<<<<<<<<<<<<<<<<<<<<<<<END OF SCRIPT>>>>>>>>>>>>>>>>>>>>>>>>#
 
 # SCRATCH PAD ####
+
+# get means and sd around FA values reported in text
+
+# 16
+meanvalues <- FA_wide %>%
+  filter(phylum == "Rhodophyta") %>%
+  select(`16:0`) 
+mean(meanvalues$`16:0`)
+sd(meanvalues$`16:0`)
+
+# 20:5w3
+meanvalues <- FA_wide %>%
+  filter(phylum == "Rhodophyta") %>%
+  select(`20:5w3`) 
+mean(meanvalues$`20:5w3`)
+sd(meanvalues$`20:5w3`)
+
+# 20:4w6
+meanvalues <- FA_wide %>%
+  filter(phylum == "Rhodophyta") %>%
+  select(`20:4w6`) 
+mean(meanvalues$`20:4w6`)
+sd(meanvalues$`20:4w6`)
+
+# 16:1w7 new Rhodo only
+meanvalues <- FA_wide %>%
+  filter(phylum == "Rhodophyta") %>%
+  filter(revisedSpecies %in% c("Ballia callitricha",
+                               "Porphyra plocamiestris",
+                               "Paraglossum salicifolium",
+                               "Picconiella plumosa",
+                               "Meridionella antarctica",
+                               "Austropugetia crassa",
+                               "Callophyllis atrosanguinea",
+                               "Gymnogongrus antarcticus",
+                               "Phyllophora antarctica",
+                               "Pachymenia orbicularis",
+                               "Trematocarpus antarcticus")) %>%
+  select(`16:1w7c`) 
+mean(meanvalues$`16:1w7c`)
+sd(meanvalues$`16:1w7c`)
+
+# OCHRO
+
+# 20:4w6
+meanvalues <- FA_wide %>%
+  filter(phylum == "Ochrophyta") %>%
+  filter(revisedSpecies != "Benthic diatoms") %>%
+  select(`20:4w6`) 
+mean(meanvalues$`20:4w6`)
+sd(meanvalues$`20:4w6`)
+
+# 20:5w3
+meanvalues <- FA_wide %>%
+  filter(phylum == "Ochrophyta") %>%
+  filter(revisedSpecies != "Benthic diatoms") %>%
+  select(`20:5w3`) 
+mean(meanvalues$`20:5w3`)
+sd(meanvalues$`20:5w3`)
+
+# 16:0
+meanvalues <- FA_wide %>%
+  filter(phylum == "Ochrophyta") %>%
+  filter(revisedSpecies != "Benthic diatoms") %>%
+  select(`16:0`) 
+mean(meanvalues$`16:0`)
+sd(meanvalues$`16:0`)
+
+# 18:4w3
+meanvalues <- FA_wide %>%
+  filter(phylum == "Ochrophyta") %>%
+  filter(revisedSpecies != "Benthic diatoms") %>%
+  select(`18:4w3c`) 
+mean(meanvalues$`18:4w3c`)
+sd(meanvalues$`18:4w3c`)
+
+# 18:1w9
+meanvalues <- FA_wide %>%
+  filter(phylum == "Ochrophyta") %>%
+  filter(revisedSpecies != "Benthic diatoms") %>%
+  select(`18:1w9c`) 
+mean(meanvalues$`18:1w9c`)
+sd(meanvalues$`18:1w9c`)
+
+# CHLOR
+
+# 16:0
+meanvalues <- FA_wide %>%
+  filter(phylum == "Chlorophyta") %>%
+  select(`16:0`) 
+mean(meanvalues$`16:0`)
+sd(meanvalues$`16:0`)
+
+# 18:3w3
+meanvalues <- FA_wide %>%
+  filter(phylum == "Chlorophyta") %>%
+  select(`18:3w3`) 
+mean(meanvalues$`18:3w3`)
+sd(meanvalues$`18:3w3`)
+
+# 18:2w6
+meanvalues <- FA_wide %>%
+  filter(phylum == "Chlorophyta") %>%
+  select(`18:2w6c`) 
+mean(meanvalues$`18:2w6c`)
+sd(meanvalues$`18:2w6c`)
+
+
+
+# Rerun of PERMANOVA for FA with site as a factor
+
+### PERMANOVA 
+
+# algal FA for adonis
+FA_only <- FA_wide %>%
+  filter(revisedSpecies != "Benthic diatoms") %>%
+  select(`8:0`:`24:1w9`) 
+
+# species only
+adonis2(abs(FA_only) ~ revisedSpecies + siteName, data = filter(FA_wide, revisedSpecies != "Benthic diatoms"), method = 'bray', na.rm = TRUE)
+
+
 
 # number of FA detected (mean) for each species
 numberFA <- FASI_QAQC %>%
