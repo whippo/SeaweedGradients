@@ -69,7 +69,7 @@ library(ggpubr)
 
 
 # Read in all core species from data pipeline and remove duplicated 'all' FA
-FASI_QAQC <- read_csv("Data/Biomarkers/FattyAcids/gradients2019_bsides_FASI_QAQC.csv")
+FASI_QAQC <- read_csv("Data/Biomarkers/FattyAcids/gradients2019_bsides_FASI_QAQC_new.csv")
 all_species <- FASI_QAQC %>%
   select(!`19:0`) %>%
   select_if(~ !is.numeric(.) || sum(., na.rm = TRUE) != 0)
@@ -78,12 +78,12 @@ all_species <- FASI_QAQC %>%
 long_species <- all_species %>%
   select(ProjID, siteName, revisedSpecies, `Ice cover (NIC-Midpoint-Annual)`,
          targetFA, `CN ratio`:`24:1w9`) %>%
-  filter(targetFA == "standards", !is.na(`CN ratio`)) %>%
+  filter(!is.na(`CN ratio`)) %>%
   pivot_longer(cols = `CN ratio`:`24:1w9`, names_to = 'marker', values_to = 'value')
 
 # create wide dataset, remove non-overlapping samples
 overlap_species <- all_species %>%
-  filter(targetFA == "standards", !is.na(`CN ratio`)) %>%
+  filter(!is.na(`CN ratio`)) %>%
   select_if(~ !is.numeric(.) || sum(., na.rm = TRUE) != 0)
 
 # SI only wide dataset
@@ -163,7 +163,7 @@ no_diatoms_meanFA <- FA_wide %>%
   summarise(across(`8:0`:`24:1w9`, mean)) 
 
 
-Alg_dist <- vegdist(no_diatoms_meanFA[,3:42])
+Alg_dist <- vegdist(no_diatoms_meanFA[,3:47])
 Alg_clust <- hclust(Alg_dist, method="ward.D2")
 Alg_order <- data.frame(no_diatoms_meanFA$revisedSpecies, Alg_clust$order)
 Alg_order <- Alg_order[order(Alg_order$Alg_clust.order), ]
@@ -269,8 +269,8 @@ FA_tax <- FA_wide %>%
                             revisedSpecies == "Hymenocladiopsis sp." ~ "Fryeellaceae")) 
 
 # PERMANOVA of order and family ALL FA
-adonis2(abs(FA_tax[,24:63]) ~ order, data = FA_tax, method = 'bray', na.rm = TRUE)
-adonis2(abs(FA_tax[,24:63]) ~ family, data = FA_tax, method = 'bray', na.rm = TRUE)
+adonis2(abs(FA_tax[,24:68]) ~ order, data = FA_tax, method = 'bray', na.rm = TRUE)
+adonis2(abs(FA_tax[,24:68]) ~ family, data = FA_tax, method = 'bray', na.rm = TRUE)
 
 # PERMANOVA of order and family REDUCED FA
 FA_tax_reduced <- FA_tax %>%
@@ -289,7 +289,7 @@ FA_mds_points <- FA_mds$points
 # turn those plot points into a dataframe that ggplot2 can read
 FA_mds_points <- data.frame(FA_mds_points)
 # join your plot points with your summed species observations from each habitat type
-plot_data_tax <- data.frame(FA_mds_points, FA_tax[,c(7,8,64,65)])
+plot_data_tax <- data.frame(FA_mds_points, FA_tax[,c(7,8,69,70)])
 plot_data_tax <- plot_data_tax %>%
   rename("division" = "phylum")
 
@@ -1716,3 +1716,135 @@ CN_ANOVA
 
 pwc <- SI_values %>% tukey_hsd(log10(`CN ratio`) ~ phylum)
 pwc
+
+
+
+
+
+
+####
+#<<<<<<<<<<<<<<<<<<<<<<<<<<END OF SCRIPT>>>>>>>>>>>>>>>>>>>>>>>>#
+
+# SCRATCH PAD ####
+
+listFA <- colnames(FASI_QAQC)
+list1 <- listFA[24:64]
+
+
+
+
+
+############## JULIES REDO OF DATASET
+
+# read in Julie's data and compare samples to existing FA list
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+############## JULIES DATASET FOR TOTAL 16 PUFAs
+
+JuliesAlgae <- read_csv("Data/Biomarkers/FattyAcids/JuliesAlgae.csv", 
+                        col_types = cols(`C14:1w5` = col_double(), 
+                                         `C16:2w6...8` = col_double(), `C16:2w6...9` = col_double(), 
+                                         `C17:0` = col_double(), `C16:4w1` = col_double(), 
+                                         `C16:3n4` = col_double(), `C18:3w3` = col_double(),
+                                         `C18:5w3` = col_double(), `C18:4w3` = col_double(),
+                                         `C18:1n` = col_double(), `C18:3w6` = col_double(), 
+                                         `C20:4w3` = col_double(), `C22:0` = col_double(), 
+                                         `C22:5w3` = col_double(), `C22:6w3` = col_double()))
+
+JuliesAlgae$areaSum <- rowSums(JuliesAlgae[,2:29], na.rm = T)
+
+proportions <- JuliesAlgae[,2:29]/JuliesAlgae$areaSum
+
+proportions$Sample <- JuliesAlgae$Sample
+proportions$species <- str_extract(JuliesAlgae$Sample, "^.{4}")
+
+phyla <- proportions %>%
+  mutate(phylum = case_when(species == "DEME" ~ "ochrophyta",
+         species == "HIGR" ~ "ochrophyta",
+         species == "IRCO" ~ "rhodophyta",
+         species == "PHAN" ~ "rhodophyta",
+         species == "PLCA" ~ "rhodophyta",
+         species == "MYMA" ~ "rhodophyta",
+         species == "ADUT" ~ "ochrophyta",
+         species == "ASCR" ~ "rhodophyta",
+         species == "ASMI" ~ "ochrophyta",
+         species == "BACA" ~ "rhodophyta",
+         species == "CAAT" ~ "rhodophyta",
+         species == "CORA" ~ "rhodophyta",
+         species == "CYJA" ~ "ochrophyta",
+         species == "CYOB" ~ "rhodophyta",
+         species == "DEAN" ~ "ochrophyta",
+         species == "DEAP" ~ "ochrophyta",
+         species == "DEPU" ~ "rhodophyta",
+         species == "GECO" ~ "rhodophyta",
+         species == "GISK" ~ "rhodophyta",
+         species == "GYAN" ~ "rhodophyta",
+         species == "HIGR" ~ "ochrophyta",
+         species == "HYSP" ~ "rhodophyta",
+         species == "LAAN" ~ "chlorophyta",
+         species == "MYMA" ~ "rhodophyta",
+         species == "MYSM" ~ "rhodophyta",
+         species == "PADE" ~ "rhodophyta",
+         species == "PAOR" ~ "rhodophyta",
+         species == "PAPI" ~ "rhodophyta",
+         species == "PASA" ~ "rhodophyta",
+         species == "PIPI" ~ "rhodophyta",
+         species == "POPL" ~ "rhodophyta",
+         species == "RHLA" ~ "rhodophyta",
+         species == "SYAU" ~ "rhodophyta",
+         species == "PAPL" ~ "rhodophyta",
+         species == "PIPL" ~ "rhodophyta",
+         species == "TRAN" ~ "rhodophyta"))
+
+PUFA16 <- phyla %>%
+  filter(species != "BEDI") %>%
+  filter(species != "ANTS") %>%
+  select(Sample, species, phylum, `C16:2w6...8`, `C16:2w6...9`, `C16:3n4`, `C16:4w1`) %>%
+  mutate(`C16:2w6` = `C16:2w6...8` + `C16:2w6...9`) %>%
+  select(Sample, species, phylum, `C16:2w6`, `C16:3n4`, `C16:4w1`)
+
+AllSummary <- PUFA16 %>%
+  group_by(species, phylum) %>%
+  summarise(across(starts_with("C"),  list(
+    mean = ~ mean(.x, na.rm = T), 
+    sd = ~ sd(.x, na.rm = T),
+    max = ~ max(.x))))
+  
+
+speciesSummary <- AllSummary %>%
+  replace(is.na(.), 0)
+
+PhylumSummary <- PUFA16 %>%
+  group_by(phylum) %>%
+  summarise(across(starts_with("C"), list(
+    mean = ~ mean(.x, na.rm = T), 
+    sd = ~ sd(.x, na.rm = T),
+    max = ~ max(.x, na.rm = T))))
+
+phySummary <- PhylumSummary %>%
+  replace(is.na(.), 0)
+
+write_csv(phySummary, "C:/Users/Ross.Whippo/Desktop/phylum.csv")
