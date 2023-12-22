@@ -199,7 +199,7 @@ fviz_dend(x = Alg_clust, cex = 0.8, lwd = 0.8, k = 4,
 FA_only <- FA_wide %>%
   filter(revisedSpecies != "Benthic diatoms") %>%
   select(`8:0`:`24:1w9`) 
-
+##################
 ###### FA VALUES ONLY NO DIATOMS, ORDER LEVEL ANALYSIS
 # algal FA for adonis
 FA_only <- FA_wide %>%
@@ -281,7 +281,7 @@ FA_tax_reduced <- FA_tax %>%
 adonis2(abs(FA_tax_reduced[,1:7]) ~ order, data = FA_tax, method = 'bray', na.rm = TRUE)
 adonis2(abs(FA_tax_reduced[,1:7]) ~ family, data = FA_tax, method = 'bray', na.rm = TRUE)
 
-
+###############
 FA_matrix <- FA_only
 
 # run the nMDS
@@ -389,7 +389,7 @@ xvalues <- c(-0.31, 0.18, -0.05, 0.30, 0.26, -0.09, -0.15)
 yvalues <- c(-0.14, 0.29, -0.27, -0.13, 0.25, 0.23, -0.15)
 # make final ggplot figure
 ggplot(uscores1) + 
-  scale_fill_viridis(discrete = TRUE, begin = 0.2, end = 0.9, option = "G", guide = guide_legend(title = "division", label.theme = element_text(face = "italic"))) +
+  scale_fill_viridis(discrete = TRUE, begin = 0.2, end = 0.9, option = "G", guide = guide_legend(title = "division")) +
   #scale_color_viridis(discrete = TRUE, begin = 0.2, end = 0.9, option = "G", guide = guide_legend(title = "division", label.theme = element_text(face = "italic")))  +
   geom_segment(data = vscores, aes(x = 0, y = 0, xend = PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
                alpha = 0.75, color = 'grey30') +
@@ -438,41 +438,56 @@ adonis2(abs(FA_only) ~ phylum, data = filter(FA_wide, revisedSpecies != "Benthic
 # run PCA
 PCA_results <-  rda(FA_only, scale = TRUE)
 # check that axes are above the mean (per Numerical Ecology)
-ev <- PCA_results$CA$eig
-ev>mean(ev)
+#ev <- PCA_results$CA$eig
+#ev>mean(ev)
 # proportion explained
-barplot(ev, main="eigenvalues", col="bisque", las=2)
-abline(h=mean(ev), col="red")
-legend("topright", "Average eignenvalue", lwd=1, col=2)
+#barplot(ev, main="eigenvalues", col="bisque", las=2)
+#abline(h=mean(ev), col="red")
+#legend("topright", "Average eignenvalue", lwd=1, col=2)
 # testing different scalings (1 = good for samples/sites, 2 = good for correlations)
-biplot(PCA_results, scaling=1, main="PCA scaling 1") # scaling 1 for distances between objects
-biplot(PCA_results, main="PCA scaling 2") # correlation biplot, for seeing correlation between response variables (species) see angles. 
-autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
+#biplot(PCA_results, scaling=1, main="PCA scaling 1") # scaling 1 for distances between objects
+#biplot(PCA_results, main="PCA scaling 2") # correlation biplot, for seeing correlation between response variables (species) see angles. 
+#autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
 
 
 # extract PCA coordinates
 uscores <- data.frame(PCA_results$CA$u)
 uscores1 <- inner_join(rownames_to_column(filter(FA_wide, revisedSpecies != "Benthic diatoms")), rownames_to_column(data.frame(uscores)), by = "rowname")
+# add phylum shapes
+uscores2 <- uscores1 %>%
+  mutate(phylumShape = case_when(phylum == "Ochrophyta" ~ "24",
+                   phylum == "Rhodophyta" ~ "22",
+                   phylum == "Chlorophyta" ~ "21"))
+
 vscores <- data.frame(PCA_results$CA$v)
+vscores <- rownames_to_column(vscores)
+vscores <- vscores 
 # extract explanatory percentages
 PCA_summary <- summary(PCA_results)
 PCA_import <- as.data.frame(PCA_summary[["cont"]][["importance"]])
 var_explained <- PCA_import[2, 1:2]
 
 # make final ggplot figure
-xvalues <- c(0.4, -0.10, 0.47, -0.35, -0.50, -0.40, 0.25)
-yvalues <- c(0.41, -0.75, -0.27, 0.29, 0.06, 0.14, 0.45)
-ggplot(uscores1) + 
+#xvalues <- c(0.4, -0.10, 0.47, -0.35, -0.50, -0.40, 0.25)
+#yvalues <- c(0.41, -0.75, -0.27, 0.29, 0.06, 0.14, 0.45)
+ggplot(uscores2) + 
   scale_fill_viridis(discrete = TRUE, guide = guide_legend(title = "species", label.theme = element_text(face = "italic"))) +
-  scale_color_viridis(discrete = TRUE, guide = guide_legend(title = "species", label.theme = element_text(face = "italic")))  +
+  #scale_color_viridis(discrete = TRUE, guide = guide_legend(title = "species", label.theme = element_text(face = "italic")))  +
   geom_segment(data = vscores, aes(x = 0, y = 0, xend = PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
                alpha = 0.75, color = 'grey30') +
-  geom_text(data = vscores, aes(x = xvalues, y = yvalues, label = rownames(vscores)), col = 'red') +
-  geom_point(aes(x = PC1, y = PC2, fill = revisedSpecies, color = revisedSpecies,
-                 shape = phylum), size = 4) +
-  labs(shape = "division") +
+  scale_shape_manual(values = c(21, 24, 22)) +
+  scale_color_manual(values = rep("black", 31)) +
+  #geom_text(data = vscores, aes(x = xvalues, y = yvalues, label = rownames(vscores)), col = 'red') +
+  geom_point(aes(x = PC1, y = PC2, fill = revisedSpecies, color = revisedSpecies, shape = phylum),
+                 size = 4) +
+  geom_text_repel(data = subset(vscores, rowname %in% c(topsimp$VALUE)),
+                  aes(x = PC1, y = PC2, label = rowname), color = "red",
+                  position = position_nudge_center(x = 0.02, y = 0.02, 0, 0),
+                  min.segment.length = 1) +
+  labs(shape = "division", fill = "species") +
   theme_bw() +
   theme(strip.text.y = element_text(angle = 0)) +
+  guides(fill = guide_legend(override.aes = list(shape=21), label.theme = element_text(face = "italic", size = 9)), color = "none") +
   labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
        y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
 
@@ -578,9 +593,10 @@ deltaspecies <- ggplot(sumspecies) +
                                xmin = mC - sdC/sqrt(count),
                                xmax = mC + sdC/sqrt(count)),
                  height = 0) + 
-  geom_point(aes(x = mC, y = mN, color = revisedSpecies),
-             size = 4) +
-  scale_color_viridis(discrete = TRUE, 
+  #geom_point(aes(x = mC, y = mN, color = revisedSpecies),
+  #           size = 4) +
+  geom_point(aes(x = mC, y = mN, fill = revisedSpecies), pch = 21, color = "black", size = 4) +
+  scale_fill_viridis(discrete = TRUE, 
                       guide = guide_legend(title = "species",
                                            label.theme = element_text(face = "italic", size = 9)))  +
   labs(x = "\U03B4\U00B9\u00B3C" , y = "\U03B4\U00B9\U2075N") +
@@ -595,7 +611,7 @@ species_leg <- as_ggplot(get_legend(species_leg))
 
 # deltas divisions
 deltadivision <- ggplot(sumspecies) +
-  scale_color_viridis(discrete = TRUE, begin = 0.2, end = 0.9, option = "G", name = "division") +
+  scale_fill_viridis(discrete = TRUE, begin = 0.2, end = 0.9, option = "G", name = "division") +
   geom_errorbar(data = sumspecies, 
                 mapping = aes(x = mC, y = mN,
                               ymin = mN - sdN/sqrt(count), 
@@ -605,9 +621,10 @@ deltadivision <- ggplot(sumspecies) +
                  mapping = aes(x = mC, y = mN,
                                xmin = mC - sdC/sqrt(count),
                                xmax = mC + sdC/sqrt(count)),
-                 height = 0, na.rm = FALSE) + 
-  geom_point(aes(x = mC, y = mN, color = phylum, group = phylum),
-             size = 4) +
+                 height = 0, na.rm = TRUE) + 
+ # geom_point(aes(x = mC, y = mN, color = phylum, group = phylum),
+#             size = 4) +
+  geom_point(aes(x = mC, y = mN, fill = phylum), pch = 21, color = "black", size = 4) +
   labs(x = "\U03B4\U00B9\u00B3C" , y = "\U03B4\U00B9\U2075N") +
   theme_bw()
 division_leg <- as_ggplot(get_legend(deltadivision))
@@ -618,15 +635,15 @@ ratios <- SI_values %>%
   mutate(phylum = case_when(phylum == "Chlorophyta" ~ "",
                             phylum == "Ochrophyta" ~ "Ochrophyta",
                             phylum == "Rhodophyta" ~ "Rhodophyta")) %>%
-  ggplot(aes(x = revisedSpecies, y = `CN ratio`, color = phylum)) + 
-  scale_color_viridis(discrete = TRUE, begin = 0.2, end = 0.9, option = "G") + 
+  ggplot(aes(x = revisedSpecies, y = `CN ratio`, fill = phylum), color = "black") + 
+  scale_fill_viridis(discrete = TRUE, begin = 0.2, end = 0.9, option = "G") + 
+  geom_errorbar(stat="summary", fun.data="mean_se", size = 1) +
   stat_summary(
     geom = "point",
     fun = "mean",
     size = 6,
-    shape = 19
+    shape = 21
   ) +
-  geom_errorbar(stat="summary", fun.data="mean_se", size = 1) +
   facet_grid(cols = vars(phylum), scales = "free_x", space = "free_x") +
   theme_bw() +
   theme(legend.position = "none") +
@@ -729,16 +746,16 @@ adonis2(abs(SI_only) ~ phylum, data = filter(SI_wide, revisedSpecies != "Benthic
 # run PCA
 PCA_results <-  rda(SI_wide[,c(21:23)], scale = TRUE)
 # check that axes are above the mean (per Numerical Ecology)
-ev <- PCA_results$CA$eig
-ev>mean(ev)
+#ev <- PCA_results$CA$eig
+#ev>mean(ev)
 # proportion explained
-barplot(ev, main="eigenvalues", col="bisque", las=2)
-abline(h=mean(ev), col="red")
-legend("topright", "Average eignenvalue", lwd=1, col=2)
+#barplot(ev, main="eigenvalues", col="bisque", las=2)
+#abline(h=mean(ev), col="red")
+#legend("topright", "Average eignenvalue", lwd=1, col=2)
 # testing different scalings (1 = good for samples/sites, 2 = good for correlations)
-biplot(PCA_results, scaling=1, main="PCA scaling 1") # scaling 1 for distances between objects
-biplot(PCA_results, main="PCA scaling 2") # correlation biplot, for seeing correlation between response variables (species) see angles. 
-autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
+#biplot(PCA_results, scaling=1, main="PCA scaling 1") # scaling 1 for distances between objects
+#biplot(PCA_results, main="PCA scaling 2") # correlation biplot, for seeing correlation between response variables (species) see angles. 
+#autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
 
 
 # extract PCA coordinates
@@ -749,21 +766,32 @@ vscores <- data.frame(PCA_results$CA$v)
 PCA_summary <- summary(PCA_results)
 PCA_import <- as.data.frame(PCA_summary[["cont"]][["importance"]])
 var_explained <- PCA_import[2, 1:2]
+vscores <- rownames_to_column(vscores)
+vscores <- vscores 
 
 xvalues <- c(0.63, 0.35, 0.77)
 yvalues <- c(-0.55, 0.90, 0.03)
 # make final ggplot figure (Points scaled by 1.5)
 ggplot(uscores1) + 
-  scale_fill_viridis(discrete = TRUE, guide = guide_legend(title = "Species", label.theme = element_text(face = "italic"))) +
-  scale_color_viridis(discrete = TRUE, guide = guide_legend(title = "Species", label.theme = element_text(face = "italic")))  +
+  scale_fill_viridis(discrete = TRUE, guide = guide_legend(title = "species", label.theme = element_text(face = "italic"))) +
+  #scale_color_viridis(discrete = TRUE, guide = guide_legend(title = "Species", label.theme = element_text(face = "italic")))  +
   geom_segment(data = vscores, aes(x = 0, y = 0, xend = PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
                alpha = 0.75, color = 'grey30') +
-  geom_text(data = vscores, aes(x = xvalues, y = yvalues, label = rownames(vscores)), col = 'red') +
-  geom_point(aes(x = PC1*1.5, y = PC2*1.5, fill = revisedSpecies, color = revisedSpecies,
-                 shape = phylum), size = 4) +
-  labs(shape = "Division") +
+  scale_shape_manual(values = c(21, 24, 22)) +
+  scale_color_manual(values = rep("black", 31)) +
+  #geom_text(data = vscores, aes(x = xvalues, y = yvalues, label = rownames(vscores)), col = 'red') +
+  #geom_point(aes(x = PC1*1.5, y = PC2*1.5, fill = revisedSpecies, color = revisedSpecies,
+   #              shape = phylum), size = 4) +
+  geom_point(aes(x = PC1, y = PC2, fill = revisedSpecies, color = revisedSpecies, shape = phylum),
+             size = 4) +
+  geom_text_repel(data = vscores,
+                  aes(x = PC1, y = PC2, label = rowname), color = "red",
+                  position = position_nudge_center(x = 0.02, y = 0.02, 0, 0),
+                  min.segment.length = 1) +
+  labs(shape = "division", fill = "species") +
   theme_bw() +
   theme(strip.text.y = element_text(angle = 0)) +
+  guides(fill = guide_legend(override.aes = list(shape=21), label.theme = element_text(face = "italic", size = 9)), color = "none") +
   labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
        y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
 
@@ -869,16 +897,16 @@ adonis2(abs(marker_only) ~ phylum,
   # run PCA
 PCA_results <-  rda(marker_only, scale = TRUE)
 # check that axes are above the mean (per Numerical Ecology)
-ev <- PCA_results$CA$eig
-ev>mean(ev)
+#ev <- PCA_results$CA$eig
+#ev>mean(ev)
 # proportion explained
-barplot(ev, main="eigenvalues", col="bisque", las=2)
-abline(h=mean(ev), col="red")
-legend("topright", "Average eignenvalue", lwd=1, col=2)
+#barplot(ev, main="eigenvalues", col="bisque", las=2)
+#abline(h=mean(ev), col="red")
+#legend("topright", "Average eignenvalue", lwd=1, col=2)
 # testing different scalings (1 = good for samples/sites, 2 = good for correlations)
-biplot(PCA_results, scaling=1, main="PCA scaling 1") # scaling 1 for distances between objects
-biplot(PCA_results, main="PCA scaling 2") # correlation biplot, for seeing correlation between response variables (species) see angles. 
-autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
+#biplot(PCA_results, scaling=1, main="PCA scaling 1") # scaling 1 for distances between objects
+#biplot(PCA_results, main="PCA scaling 2") # correlation biplot, for seeing correlation between response variables (species) see angles. 
+#autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
 
 
 # extract PCA coordinates
@@ -911,18 +939,23 @@ ggplot(uscores1) +
                       guide = guide_legend(title = "Species", label.theme = element_text(face = "italic")))  +
   geom_segment(data = vscores, aes(x = 0, y = 0, xend = PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
                alpha = 0.75, color = 'grey30') +
-  geom_point(aes(x = PC1, y = PC2, fill = revisedSpecies, color = revisedSpecies,
-                 shape = phylum), size = 4) +
+  scale_shape_manual(values = c(21, 24, 22)) +
+  scale_color_manual(values = rep("black", 31)) +
+  #geom_point(aes(x = PC1, y = PC2, fill = revisedSpecies, color = revisedSpecies,
+        #         shape = phylum), size = 4) +
+  geom_point(aes(x = PC1, y = PC2, fill = revisedSpecies, color = revisedSpecies, shape = phylum),
+             size = 4) +
   #geom_text(data = vscores, aes(x = PC1, y = PC2, label = rownames(vscores)),
   #          col = 'red',
   #          position = position_jitter(width = 0.05, height = 0.01, seed = 5)) +
   geom_text_repel(data = subset(vscores, rowname %in% c(topsimp$VALUE)),
             aes(x = PC1, y = PC2, label = rowname), color = "red",
-            position = position_nudge_center(x = 0.02, y = 0.02, 0, 0)) +
-  
-  labs(shape = "Division") +
+            position = position_nudge_center(x = 0.02, y = 0.02, 0, 0),
+            min.segment.length = 2) +
+  labs(shape = "division", fill = "species") +
   theme_bw() +
   theme(strip.text.y = element_text(angle = 0)) +
+  guides(fill = guide_legend(override.aes = list(shape=21), label.theme = element_text(face = "italic", size = 9)), color = "none") +
   labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
        y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
 
@@ -1115,8 +1148,8 @@ siprint <- SI_values %>%
 SI_only <- SI_wide %>%
   filter(revisedSpecies != "Benthic diatoms") %>%
   select(`CN ratio`:`d13C`) 
-
-###### SI VALUES ONLY NO DIATOMS, ORDER LEVEL ANALYSIS
+##############
+########### SI VALUES ONLY NO DIATOMS, ORDER LEVEL ANALYSIS
 # algal SI for adonis
 SI_only <- SI_wide %>%
   filter(revisedSpecies != "Benthic diatoms") %>%
@@ -1186,7 +1219,7 @@ SI_tax <- SI_wide %>%
                             revisedSpecies == "Trematocarpus antarcticus" ~ "Sarcodiaceae",
                             revisedSpecies == "Hymenocladiopsis sp." ~ "Fryeellaceae")) 
 
-
+##################
 SI_matrix <- SI_only
 
 # run the nMDS
@@ -1196,7 +1229,7 @@ SI_mds_points <- SI_mds$points
 # turn those plot points into a dataframe that ggplot2 can read
 SI_mds_points <- data.frame(SI_mds_points)
 # join your plot points with your summed species observations from each habitat type
-plot_data_tax <- data.frame(SI_mds_points, SI_tax[,c(7,8,64,65)])
+plot_data_tax <- data.frame(SI_mds_points, SI_tax[,c(7,8,69,70)])
 plot_data_tax <- plot_data_tax %>%
   rename("division" = "phylum")
 
@@ -1204,33 +1237,34 @@ plot_data_tax <- plot_data_tax %>%
 # run the ggplot
 phylum_plot <- 
   ggplot(plot_data_tax, aes(x=MDS1, y=MDS2, 
-                            color = division)) + 
+                            fill = division)) +  
   labs(x = "nMDS1", y = "nMDS2") +
   theme_classic() + 
-  geom_point(size = 2) + 
-  scale_color_viridis(discrete = TRUE, begin = 0.2, end = 0.9, option = "G", name = "division") 
+  geom_point(pch = 21, size = 2, color = "black") + 
+  scale_fill_viridis(discrete = TRUE, begin = 0.2, end = 0.9, option = "G", name = "division") 
 phylum_leg <- as_ggplot(get_legend(phylum_plot))
 
 order_plot <- 
   ggplot(plot_data_tax, aes(x=MDS1, y=MDS2, # note pch and color are linked to *factors*
-                            color = order)) +  
+                            fill = order)) +  
   labs(x = "nMDS1", y = "nMDS2") +
-  theme_classic() + # optional, I just like this theme
-  geom_point(size = 2) + # set size of points to whatever you want
+  theme_classic() +
+  geom_point(pch = 21, size = 2, color = "black") +  # set size of points to whatever you want
   guides(color=guide_legend(ncol=2)) +
   # geom_polygon(data=chulls_tax, aes(x=MDS1, y=MDS2, group=Habitat), fill=NA) + # optional 'hulls' around points
-  scale_color_viridis(discrete = TRUE, begin = 0.1, end = 0.9, option = "B", name = "order") # my favorite color-blind and b&w friendly palette, look at the viridis package for more details 
+  scale_fill_viridis(discrete = TRUE, begin = 0.1, end = 0.9, option = "B", name = "order") # my favorite color-blind and b&w friendly palette, look at the viridis package for more details 
 order_leg <- as_ggplot(get_legend(order_plot))
 
 
 family_plot <- 
   ggplot(plot_data_tax, aes(x=MDS1, y=MDS2, # note pch and color are linked to *factors*
-                            color = family)) +  
+                            fill = family)) +  
   labs(x = "nMDS1", y = "nMDS2") +
-  theme_classic() + # optional, I just like this theme
-  geom_point(size = 2) + # set size of points to whatever you want
-  guides(color=guide_legend(ncol=2)) +
-  scale_color_viridis(discrete = TRUE, begin = 0.1, end = 0.9, option = "H", name = "family") # my favorite color-blind and b&w friendly palette, look at the viridis package for more details 
+  theme_classic() + 
+  geom_point(pch = 21, size = 2, color = "black") +  # set size of points to whatever you want
+  # geom_polygon(data=chulls_tax, aes(x=MDS1, y=MDS2, group=Habitat), fill=NA) + # optional 'hulls' around points
+  guides(fill=guide_legend(ncol=2)) +
+  scale_fill_viridis(discrete = TRUE, begin = 0.1, end = 0.9, option = "H", name = "family") # my favorite color-blind and b&w friendly palette, look at the viridis package for more details 
 family_leg <- as_ggplot(get_legend(family_plot))
 
 FigureMDS <- ggarrange(ggarrange(phylum_plot, order_plot, family_plot,
@@ -1243,7 +1277,7 @@ FigureMDS <- ggarrange(ggarrange(phylum_plot, order_plot, family_plot,
                        ncol = 2, nrow = 1, legend = "none")
 FigureMDS
 
-# 8x12
+# 800 x 1200
 
 annotate_figure(FigureMDS, top = text_grob("2D stress = 0.04", size = 10))
 
@@ -1251,7 +1285,7 @@ annotate_figure(FigureMDS, top = text_grob("2D stress = 0.04", size = 10))
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # Online Resource Figure 3                                                     ####
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
+################
 
 # SI and reduced FA
 ### PERMANOVA 
@@ -1329,7 +1363,7 @@ adonis2(abs(SIreduced_perm[,1:10]) ~ family, data = SIreduced_perm, method = "br
 adonis2(abs(SIreduced_perm[,1:10]) ~ order, data = SIreduced_perm, method = "bray", na.rm = TRUE)
 
 
-
+###################
 
 # algal FA for adonis
 marker_only <- overlap_species %>%
@@ -1344,16 +1378,16 @@ adonis2(abs(marker_only) ~ phylum, data = filter(overlap_species, revisedSpecies
 # run PCA
 PCA_results <-  rda(marker_only, scale = TRUE)
 # check that axes are above the mean (per Numerical Ecology)
-ev <- PCA_results$CA$eig
-ev>mean(ev)
+#ev <- PCA_results$CA$eig
+#ev>mean(ev)
 # proportion explained
-barplot(ev, main="eigenvalues", col="bisque", las=2)
-abline(h=mean(ev), col="red")
-legend("topright", "Average eignenvalue", lwd=1, col=2)
+#barplot(ev, main="eigenvalues", col="bisque", las=2)
+#abline(h=mean(ev), col="red")
+#legend("topright", "Average eignenvalue", lwd=1, col=2)
 # testing different scalings (1 = good for samples/sites, 2 = good for correlations)
-biplot(PCA_results, scaling=1, main="PCA scaling 1") # scaling 1 for distances between objects
-biplot(PCA_results, main="PCA scaling 2") # correlation biplot, for seeing correlation between response variables (species) see angles. 
-autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
+#biplot(PCA_results, scaling=1, main="PCA scaling 1") # scaling 1 for distances between objects
+#biplot(PCA_results, main="PCA scaling 2") # correlation biplot, for seeing correlation between response variables (species) see angles. 
+#autoplot(PCA_results, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 6, size = 4)
 
 
 # extract PCA coordinates
@@ -1376,13 +1410,18 @@ ggplot(uscores1) +
   scale_color_viridis(discrete = TRUE, guide = guide_legend(title = "species", label.theme = element_text(face = "italic")))  +
   geom_segment(data = vscores, aes(x = 0, y = 0, xend = PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
                alpha = 0.75, color = 'grey30') +
-  geom_point(aes(x = PC1, y = PC2, fill = revisedSpecies, color = revisedSpecies,
-                 shape = phylum), size = 4) +
+  scale_shape_manual(values = c(21, 24, 22)) +
+  scale_color_manual(values = rep("black", 31)) +
+  #geom_point(aes(x = PC1, y = PC2, fill = revisedSpecies, color = revisedSpecies,
+  #               shape = phylum), size = 4) +
+  geom_point(aes(x = PC1, y = PC2, fill = revisedSpecies, color = revisedSpecies, shape = phylum),
+             size = 4) +
   geom_text_repel(data = vscores, aes(x = PC1, y = PC2, label = rowname), color = "red",
                   position = position_nudge_center(x = 0.02, y = 0.02, 0, 0)) +
-  labs(shape = "division") +
+  labs(shape = "division", fill = "species") +
   theme_bw() +
   theme(strip.text.y = element_text(angle = 0)) +
+  guides(fill = guide_legend(override.aes = list(shape=21), label.theme = element_text(face = "italic", size = 9)), color = "none") +
   labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
        y=paste0("PC2: ",round(var_explained[2]*100,1),"%")) +
   xlim(-0.45, 0.5)
