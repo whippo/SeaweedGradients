@@ -389,33 +389,32 @@ PCA_summary <- summary(PCA_results)
 PCA_import <- as.data.frame(PCA_summary[["cont"]][["importance"]])
 var_explained <- PCA_import[2, 1:2]
 
-xvalues <- c(-0.31, 0.18, -0.05, 0.30, 0.26, -0.09, -0.15)
-yvalues <- c(-0.14, 0.29, -0.27, -0.13, 0.25, 0.23, -0.15)
+#xvalues <- c(-0.31, 0.18, -0.05, 0.30, 0.26, -0.09, -0.15)
+#yvalues <- c(-0.14, 0.29, -0.27, -0.13, 0.25, 0.23, -0.15)
 # make final ggplot figure
 ggplot(uscores1) + 
-  scale_fill_viridis(discrete = TRUE, begin = 0.2, end = 0.9, option = "G", guide = guide_legend(title = "division")) +
+  scale_fill_viridis(discrete = TRUE, guide = guide_legend(title = "species", label.theme = element_text(face = "italic"))) +
+  #scale_color_viridis(discrete = TRUE, guide = guide_legend(title = "species", label.theme = element_text(face = "italic")))  +
   geom_segment(data = vscores, aes(x = 0, y = 0, xend = PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
                alpha = 0.75, color = 'grey30') +
-  geom_point(aes(x = PC1, y = PC2, fill = phylum), pch = 21, color = "black", size = 4) +
- # geom_text(data = subset(vscores, rowname %in% c("16:0", # -0.31, -0.13 
-#                                                  "20:4w6", # -0.09, 0.23
-#                                                  "18:4w3c", # 0.26, 0.25
-#                                                  "18:1w9c", # 0.18, 0.29  
-#                                                  "18:3w3", # -0.30, -0.13
-#                                                  "18:1w7c", # -0.05, -0.27
-#                                                  "20:5w3" # -0.15, -0.15
-#                                                  )), aes(x = xvalues, y = yvalues, label = rowname), col = 'red') +
+  scale_shape_manual(values = c(21, 24, 22)) +
+  scale_color_manual(values = rep("black", 31)) +
+  #geom_text(data = vscores, aes(x = xvalues, y = yvalues, label = rownames(vscores)), col = 'red') +
+  geom_point(aes(x = PC1, y = PC2, fill = revisedSpecies, color = revisedSpecies, shape = phylum),
+             size = 4) +
   geom_text_repel(data = subset(vscores, rowname %in% c(topsimp$VALUE)),
                   aes(x = PC1, y = PC2, label = rowname), color = "red",
                   position = position_nudge_center(x = 0.02, y = 0.02, 0, 0),
                   min.segment.length = 1) +
-   theme_bw() +
+  labs(shape = "division", fill = "species") +
+  theme_bw() +
   theme(strip.text.y = element_text(angle = 0)) +
+  guides(fill = guide_legend(override.aes = list(shape=21), label.theme = element_text(face = "italic", size = 9)), color = "none") +
   labs(x=paste0("PC1: ",round(var_explained[1]*100,1),"%"),
        y=paste0("PC2: ",round(var_explained[2]*100,1),"%"))
 
 
-# size = 8x6 cairo pdf
+# size = 11x6 cairo pdf
 
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -431,7 +430,6 @@ ggplot(uscores1) +
 
 # algal FA for adonis
 FA_only <- FA_wide %>%
-  filter(revisedSpecies != "Benthic diatoms") %>%
   select(`20:5w3`, `20:4w6`, `16:0`, `18:3w3`, `18:4w3c`, `18:1w9c`, `18:1w7c`) 
 
 # species only
@@ -820,7 +818,6 @@ marker_only <- overlap_species %>%
 
 # algal FA/SI for PERMANOVA
 overlap_perm <- overlap_species %>%
-  filter(revisedSpecies != "Benthic diatoms") %>%
   select(`CN ratio`:`24:1w9`, revisedSpecies)  %>%
   mutate(order = case_when(revisedSpecies == "Lambia antarctica" ~ "Bryopsidales",
                            revisedSpecies == "Ascoseira mirabilis" ~ "Ascoseirales",
@@ -930,7 +927,7 @@ var_explained <- PCA_import[2, 1:2]
 
 # pull out top 98% contributors to differences
 topsimp <- simpersum %>%
-  filter(total.cumsum < 0.99) %>%
+  filter(total.cumsum < 0.83) %>%
   add_row(VALUE = "CN ratio") %>%
   add_row(VALUE = "d15N") %>%
   add_row(VALUE = "d13C")
@@ -941,10 +938,8 @@ topsimp$VALUE
 # make final ggplot figure
 #set.seed(1)
 ggplot(uscores1) + 
-  scale_fill_viridis(discrete = TRUE, 
-                     guide = guide_legend(title = "Species", label.theme = element_text(face = "italic"))) +
-  scale_color_viridis(discrete = TRUE, 
-                      guide = guide_legend(title = "Species", label.theme = element_text(face = "italic")))  +
+  scale_fill_viridis(discrete = TRUE, guide = guide_legend(title = "species", label.theme = element_text(face = "italic"))) +
+  #scale_color_viridis(discrete = TRUE, guide = guide_legend(title = "species", label.theme = element_text(face = "italic")))  +
   geom_segment(data = vscores, aes(x = 0, y = 0, xend = PC1, yend = PC2), arrow=arrow(length=unit(0.2,"cm")),
                alpha = 0.75, color = 'grey30') +
   scale_shape_manual(values = c(21, 24, 22)) +
@@ -1049,7 +1044,6 @@ top_FA_together <- FA_means_together %>%
 
 
 simper_FA <- FA_wide %>%
-  filter(revisedSpecies != "Benthic diatoms") %>%
   select(`8:0`:`24:1w9`) 
 
 full_algal_simper <- simper(simper_FA)
@@ -1057,6 +1051,81 @@ simpersum <- summary(full_algal_simper)
 simpersum <- data.frame(unclass(simpersum),  # Convert summary to data frame
                         check.names = FALSE)
 simpersum <- rownames_to_column(simpersum, "VALUE")
+
+
+# ALL Ochrophyta means
+ochromean <- FA_wide %>%
+  filter(phylum == "Ochrophyta") %>%
+  select(`8:0`:`24:1w9`) %>%
+  summarise(across(everything(), mean)) %>%
+  t()
+
+# Ochro lit
+ochrolit <- FA_wide %>%
+  filter(phylum == "Ochrophyta") %>%
+  filter(revisedSpecies %in% c("Ascoseira mirabilis",
+                               "Desmarestia anceps",
+                               "Desmarestia antarctica",
+                               "Desmarestia menziesii",
+                               "Adenocystis utricularis")) %>%
+  select(`8:0`:`24:1w9`) %>%
+  summarise(across(everything(), mean)) %>%
+  t()
+
+# Ochro non-lit
+ochronolit <- FA_wide %>%
+  filter(phylum == "Ochrophyta") %>%
+  filter(revisedSpecies %notin% c("Ascoseira mirabilis",
+                               "Desmarestia anceps",
+                               "Desmarestia antarctica",
+                               "Desmarestia menziesii",
+                               "Adenocystis utricularis")) %>%
+  select(`8:0`:`24:1w9`) %>%
+  summarise(across(everything(), mean)) %>%
+  t()
+
+# ALL Rhodophyta means
+rhodomean <- FA_wide %>%
+  filter(phylum == "Rhodophyta") %>%
+  select(`8:0`:`24:1w9`) %>%
+  summarise(across(everything(), mean)) %>%
+  t()
+
+# Rhodo lit
+rhodolit <- FA_wide %>%
+  filter(phylum == "Rhodophyta") %>%
+  filter(revisedSpecies %in% c("Delisea pulchra",
+                               "Georgiella confluens",
+                               "Myriogramme smithii",
+                               "Myriogramme manginii",
+                               "Pantoneura plocamioides",
+                               "Sarcopeltis antarctica",
+                               "Iridaea cordata",
+                               "Curdiea racovitzae",
+                               "Palmaria decipiens",
+                               "Plocamium sp.",
+                               "Hymenocladiopsis sp.")) %>%
+  select(`8:0`:`24:1w9`) %>%
+  summarise(across(everything(), mean)) %>%
+  t()
+
+# Rhodo non-lit
+rhodolit <- FA_wide %>%
+  filter(phylum == "Rhodophyta") %>%
+  filter(revisedSpecies %notin% c("Delisea pulchra",
+                               "Georgiella confluens",
+                               "Myriogramme smithii",
+                               "Myriogramme manginii",
+                               "Pantoneura plocamioides",
+                               "Sarcopeltis antarctica",
+                               "Iridaea cordata",
+                               "Curdiea racovitzae",
+                               "Palmaria decipiens",
+                               "Plocamium sp.",
+                               "Hymenocladiopsis sp.")) %>%
+  select(`8:0`:`24:1w9`) %>%
+  summarise(across(everything(), mean)) %>%
+  t()
 
 # write_csv(simpersum, "simper.csv")
 
@@ -1069,7 +1138,6 @@ simpersum <- rownames_to_column(simpersum, "VALUE")
 
 # calc mean and sd of each FA for each sp
 FA_means <- all_species %>%
-  filter(revisedSpecies != "Benthic diatoms") %>%
   mutate(across(c(`8:0`:`24:1w9`), function(x) x*100)) 
 FA_means <- FA_means %>%
   select(revisedSpecies, phylum, `8:0`:`24:1w9`) %>%
@@ -1299,7 +1367,6 @@ annotate_figure(FigureMDS, top = text_grob("2D stress = 0.04", size = 10))
 
 # algal FA/SI for PERMANOVA
 SIreduced_perm <- overlap_species %>%
-  filter(revisedSpecies != "Benthic diatoms") %>%
   select(`CN ratio`:`d13C`, `20:5w3`, `20:4w6`, `16:0`, `18:3w3`, `18:4w3c`, `18:1w9c`, `18:1w7c`, revisedSpecies)  %>%
   mutate(order = case_when(revisedSpecies == "Lambia antarctica" ~ "Bryopsidales",
                            revisedSpecies == "Ascoseira mirabilis" ~ "Ascoseirales",
@@ -1625,6 +1692,12 @@ meanvalues <- FA_wide %>%
 mean(meanvalues$`18:2w6c`)
 sd(meanvalues$`18:2w6c`)
 
+# ranked mean FA chloro
+meanvalues <- FA_wide %>%
+  filter(phylum == "Chlorophyta") %>%
+  pivot_longer(`8:0`:`24:1w9`) %>%
+  group_by(name) %>%
+  summarise(mean(value))
 
 
 # Rerun of PERMANOVA for FA with site as a factor
@@ -1633,7 +1706,6 @@ sd(meanvalues$`18:2w6c`)
 
 # algal FA for adonis
 FA_only <- FA_wide %>%
-  filter(revisedSpecies != "Benthic diatoms") %>%
   select(`8:0`:`24:1w9`) 
 
 # species only
@@ -1729,7 +1801,7 @@ D_only <- FA_wide %>%
 
 adonis2(abs(D_only) ~ revisedSpecies, 
         data = filter(FA_wide, revisedSpecies %in% c("Desmarestia menziesii", "Desmarestia anceps")), 
-        method = 'bray', na.rm = TRUE, perm = 9999)
+        method = 'bray', na.rm = TRUE, perm = 999)
 
 # algal SI for adonis
 
@@ -1739,7 +1811,7 @@ D_only <- SI_wide %>%
 
 adonis2(abs(D_only) ~ revisedSpecies, 
         data = filter(FA_wide, revisedSpecies %in% c("Desmarestia menziesii", "Desmarestia anceps")), 
-        method = 'bray', na.rm = TRUE, perm = 9999)
+        method = 'bray', na.rm = TRUE, perm = 999)
 
 
 
@@ -1757,7 +1829,7 @@ PC_only <- FA_wide %>%
 
 adonis2(abs(PC_only) ~ revisedSpecies, 
         data = filter(FA_wide, revisedSpecies %in% c("Phyllophora antarctica", "Callophyllis atrosanguinea")), 
-                      method = 'bray', na.rm = TRUE, perm = 9999)
+                      method = 'bray', na.rm = TRUE, perm = 999)
 
 # algal SI for adonis
 
@@ -1767,7 +1839,7 @@ PC_only <- SI_wide %>%
 
 adonis2(abs(PC_only) ~ revisedSpecies, 
         data = filter(FA_wide, revisedSpecies %in% c("Phyllophora antarctica", "Callophyllis atrosanguinea")), 
-        method = 'bray', na.rm = TRUE, perm = 9999)
+        method = 'bray', na.rm = TRUE, perm = 999)
 
 
 # ANOVA of differences between C:N ratios of divisions

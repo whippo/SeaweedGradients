@@ -166,13 +166,17 @@ full_step6 <- full_step5 %>%
   mutate(phylum = coalesce(phylum, phylum1)) %>%
   select(!phylum1)
 
-# save final joined FA dataset
-gradients2019_bsides_FASI_QAQC <- full_step6
+# filter benthic diatoms from SI data
+full_step7 <- full_step6 %>%
+  filter(revisedSpecies != "Benthic diatoms")
   
-rm(full_step1, full_step2, full_step3, full_step4, full_step5, full_step6, diffSI, 
+# save final joined FA dataset
+gradients2019_bsides_FASI_QAQC <- full_step7
+  
+rm(full_step1, full_step2, full_step3, full_step4, full_step5, full_step6, full_step7, diffSI, 
    FA_noSI, FA_step1, SI_noFA, SI_step1, SI_step2)
 # write .csv with current joined data
-write_csv(gradients2019_bsides_FASI_QAQC, "Data/Biomarkers/FattyAcids/gradients2019_bsides_FASI_QAQC_new.csv")
+write_csv(gradients2019_bsides_FASI_QAQC, "Data/Biomarkers/FattyAcids/gradients2019_bsides_FASI_QAQC.csv")
 
 
 ####
